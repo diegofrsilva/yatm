@@ -15,7 +15,7 @@
             <summary>Round the corners of tiled windows</summary>
         </key>
         <key type="u" name="corner-radius">
-            <default>8</default>
+            <default>15</default>
             <summary>Corner radius of tiled windows in px</summary>
         </key>
 
