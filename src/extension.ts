@@ -2626,6 +2626,13 @@ export class Ext extends Ecs.System<ExtEvent> {
                     grab_focus();
                     actor.disconnect(id);
                 });
+            } else if (!win.meta.mapped) {
+                // Raising a window before it is mapped trips Mutter's stack-position
+                // assertion; wait for its first frame like the tiled path does.
+                let id = actor.connect('first-frame', () => {
+                    grab_focus();
+                    actor.disconnect(id);
+                });
             } else {
                 grab_focus();
             }

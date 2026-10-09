@@ -276,6 +276,7 @@ declare namespace Meta {
         minimized: Readonly<boolean>;
         window_type: Readonly<any>;
         decorated: Readonly<boolean>;
+        mapped: Readonly<boolean>;
         maximized_horizontally: Readonly<boolean>;
         maximized_vertically: Readonly<boolean>;
 
