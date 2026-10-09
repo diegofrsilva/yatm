@@ -37,6 +37,6 @@ export function setForeground(win: Meta.Window) {
 }
 
 function errorHandler(error: any) {
-    log.warn(`system76-scheduler may not be installed and running: ${error}`);
+    log.debug(`system76-scheduler may not be installed and running: ${error}`);
     failed = true;
 }
