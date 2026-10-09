@@ -19,6 +19,7 @@ import * as node from './node.js';
 import * as utils from './utils.js';
 import * as Executor from './executor.js';
 import { guard } from './guard.js';
+import { find_conflicts } from './conflicts.js';
 import * as movement from './movement.js';
 import * as stack from './stack.js';
 import * as add_exception from './dialog_add_exception.js';
@@ -2678,6 +2679,20 @@ declare global {
     var yatmExtension: any;
 }
 
+function warn_conflicts() {
+    const settings = global.settings as any;
+    const conflicts = find_conflicts({
+        enabled: settings.get_strv('enabled-extensions'),
+        session: sessionMode.enabledExtensions ?? [],
+        disabled: settings.get_strv('disabled-extensions'),
+    });
+
+    if (conflicts.length === 0) return;
+
+    log.warn('conflicting tiling extensions enabled: ' + conflicts.join(', '));
+    Main.notify('yatm', 'Other tiling extensions are enabled and will conflict: ' + conflicts.join(', '));
+}
+
 export default class YatmExtension extends Extension {
     enable() {
         globalThis.yatmExtension = this;
@@ -2701,6 +2716,8 @@ export default class YatmExtension extends Extension {
             ext.was_locked = false;
             return;
         }
+
+        warn_conflicts();
 
         ext.injections_add();
         ext.signals_attach();

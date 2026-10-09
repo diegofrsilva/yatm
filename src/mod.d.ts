@@ -10,6 +10,7 @@ interface Global {
     display: Meta.Display;
     run_at_leisure(func: () => void): void;
     session_mode: string;
+    settings: any;
     stage: Clutter.Actor;
     window_group: Clutter.Actor;
     window_manager: Meta.WindowManager;
