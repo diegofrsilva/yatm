@@ -2741,7 +2741,7 @@ export default class YatmExtension extends Extension {
             return;
         }
 
-        warn_conflicts();
+        guard('conflict check', warn_conflicts, log.report)();
 
         ext.injections_add();
         ext.signals_attach();
