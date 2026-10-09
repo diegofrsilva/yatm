@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="pop-shell">
-    <schema id="org.gnome.shell.extensions.pop-shell" path="/org/gnome/shell/extensions/pop-shell/">
+<schemalist gettext-domain="yatm">
+    <schema id="org.gnome.shell.extensions.yatm" path="/org/gnome/shell/extensions/yatm/">
         <!-- Appearance Options -->
         <key type="b" name="active-hint">
             <default>false</default>
@@ -278,7 +278,7 @@
             <summary>The current active-hint-color in RGBA</summary>
         </key>
         <key type="u" name="log-level">
-            <default>0</default>
+            <default>2</default>
             <summary>
                 Derive some log4j level/order
                 0 - OFF

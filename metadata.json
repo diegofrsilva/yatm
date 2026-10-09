@@ -1,15 +1,10 @@
 {
-    "name": "Pop Shell",
-    "description": "Pop Shell",
-    "version": 2,
-    "uuid": "pop-shell@system76.com",
-    "settings-schema": "org.gnome.shell.extensions.pop-shell",
+    "name": "yatm",
+    "description": "Yet Another Tiling Manager: dynamic tiling for GNOME (fork of Pop Shell)",
+    "version": 1,
+    "uuid": "yatm@diego",
+    "settings-schema": "org.gnome.shell.extensions.yatm",
     "shell-version": [
-        "45",
-        "46",
-        "47",
-        "48",
-        "49",
         "50"
     ]
 }

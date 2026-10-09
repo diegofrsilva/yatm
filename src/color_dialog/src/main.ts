@@ -29,7 +29,7 @@ function getExtensionPath(uuid: string) {
 }
 
 function getSettings(schema: string) {
-    let extensionPath = getExtensionPath('pop-shell@system76.com');
+    let extensionPath = getExtensionPath('yatm@diego');
     if (!extensionPath) throw new Error('getSettings() can only be called when extension is available');
 
     // The following will load a custom path for a user defined gsettings/schemas folder
@@ -52,7 +52,7 @@ function getSettings(schema: string) {
  * Using the settings.connect('changed') mechanism, the extension is able to listen to when the color changes in realtime.
  */
 function launch_color_dialog() {
-    let popshell_settings = getSettings('org.gnome.shell.extensions.pop-shell');
+    let popshell_settings = getSettings('org.gnome.shell.extensions.yatm');
 
     let color_dialog = new Gtk.ColorChooserDialog({
         title: 'Choose Color',

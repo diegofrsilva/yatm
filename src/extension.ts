@@ -2675,12 +2675,12 @@ let ext: Ext | null = null;
 let indicator: Indicator | null = null;
 
 declare global {
-    var popShellExtension: any;
+    var yatmExtension: any;
 }
 
-export default class PopShellExtension extends Extension {
+export default class YatmExtension extends Extension {
     enable() {
-        globalThis.popShellExtension = this;
+        globalThis.yatmExtension = this;
         log.info('enable');
 
         if (!ext) {
@@ -2711,7 +2711,7 @@ export default class PopShellExtension extends Extension {
 
         if (!indicator) {
             indicator = new PanelSettings.Indicator(ext);
-            panel.addToStatusArea('pop-shell', indicator.button);
+            panel.addToStatusArea('yatm', indicator.button);
         }
 
         ext.keybindings.enable(ext.keybindings.global).enable(ext.keybindings.window_focus);
@@ -2729,7 +2729,7 @@ export default class PopShellExtension extends Extension {
                 return;
             }
 
-            delete globalThis.popShellExtension;
+            delete globalThis.yatmExtension;
             ext.injections_remove();
             ext.signals_remove();
             ext.exit_modes();

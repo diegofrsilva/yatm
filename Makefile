@@ -8,12 +8,12 @@ endif
 
 ifeq ($(strip $(DESTDIR)),)
 INSTALLBASE = $(XDG_DATA_HOME)/gnome-shell/extensions
-PLUGIN_BASE = $(XDG_DATA_HOME)/pop-shell/launcher
-SCRIPTS_BASE = $(XDG_DATA_HOME)/pop-shell/scripts
+PLUGIN_BASE = $(XDG_DATA_HOME)/yatm/launcher
+SCRIPTS_BASE = $(XDG_DATA_HOME)/yatm/scripts
 else
 INSTALLBASE = $(DESTDIR)/usr/share/gnome-shell/extensions
-PLUGIN_BASE = $(DESTDIR)/usr/lib/pop-shell/launcher
-SCRIPTS_BASE = $(DESTDIR)/usr/lib/pop-shell/scripts
+PLUGIN_BASE = $(DESTDIR)/usr/lib/yatm/launcher
+SCRIPTS_BASE = $(DESTDIR)/usr/lib/yatm/scripts
 endif
 INSTALLNAME = $(UUID)
 
@@ -49,10 +49,10 @@ depcheck:
 	fi
 
 enable:
-	gnome-extensions enable "pop-shell@system76.com"
+	gnome-extensions enable "yatm@diego"
 
 disable:
-	gnome-extensions disable "pop-shell@system76.com"
+	gnome-extensions disable "yatm@diego"
 
 listen:
 	journalctl -o cat -n 0 -f "$$(which gnome-shell)" | grep -v warning

@@ -1,14 +1,9 @@
-# Pop Shell
+# yatm
 
-Pop Shell is a keyboard-driven layer for GNOME Shell which allows for quick and sensible navigation and management of windows. The core feature of Pop Shell is the addition of advanced tiling window management — a feature that has been highly sought within our community. For many — ourselves included — i3wm has become the leading competitor to the GNOME desktop.
+Dynamic tiling for GNOME 50 on Ubuntu. A fork of [Pop Shell](https://github.com/pop-os/shell)
+(GPL-3.0) with stability fixes, Hyprland-style gaps and animations.
 
-Tiling window management in GNOME is virtually nonexistent, which makes the desktop awkward to interact with when your needs exceed that of two windows at a given time. Luckily, GNOME Shell is an extensible desktop with the foundations that make it possible to implement a tiling window manager on top of the desktop.
-
-Therefore, we see an opportunity here to advance the usability of the GNOME desktop to better accommodate the needs of our community with Pop Shell. Advanced tiling window management is a must for the desktop, so we've merged i3-like tiling window management with the GNOME desktop for the best of both worlds.
-
-[![](./screenshot.webp)](https://raw.githubusercontent.com/pop-os/shell/master/screenshot.webp)
-
----
+Dev loop: `make dev` (nested session, isolated settings). Tests: `make test`.
 
 ## Table of Contents
 
