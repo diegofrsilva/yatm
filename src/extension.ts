@@ -21,6 +21,7 @@ import * as Executor from './executor.js';
 import { guard, run_steps } from './guard.js';
 import { find_conflicts } from './conflicts.js';
 import { restart_tiler_steps } from './panic.js';
+import { window_corner_radius } from './corners.js';
 import { set_rounded_corners } from './rounded_corners.js';
 import * as movement from './movement.js';
 import * as stack from './stack.js';
@@ -166,6 +167,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Exactly half of the value of the inner gap */
     gap_inner_half: number = 0;
+
+    /** notify::size handlers on window actors, for rounded-corner bounds. */
+    corner_size_signals: Map<Clutter.Actor, SignalID> = new Map();
 
     /** Previously-set value of the inner gap */
     gap_inner_prev: number = 0;
@@ -392,6 +396,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                             }
                         }
 
+                        this.update_corners(win);
                         break;
                 }
 
@@ -518,6 +523,8 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             this.connect_meta(win, 'size-changed', () => this.update_corners(win)),
         ]);
+
+        this.watch_actor_size(win);
     }
 
     exception_add(win: Window.ShellWindow) {
@@ -971,9 +978,25 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Rounded corners only on windows the auto-tiler manages. */
     update_corners(win: Window.ShellWindow) {
-        const tiled = this.auto_tiler !== null && this.auto_tiler.attached.contains(win.entity);
-        const radius = tiled && this.settings.rounded_corners() ? this.settings.corner_radius() : 0;
+        const radius = window_corner_radius({
+            tiled: this.auto_tiler !== null && this.auto_tiler.attached.contains(win.entity),
+            enabled: this.settings.rounded_corners(),
+            radius: this.settings.corner_radius(),
+            maximized: win.is_maximized(),
+            fullscreen: win.meta.is_fullscreen(),
+            destroying: win.destroying,
+        });
+        if (radius === null) return;
         guard('rounded corners', () => set_rounded_corners(win.meta, radius), log.report)();
+    }
+
+    /** The actor size also changes when only the client's shadow (buffer) changes. */
+    watch_actor_size(win: Window.ShellWindow) {
+        const actor = win.meta.get_compositor_private();
+        if (!actor || this.corner_size_signals.has(actor)) return;
+
+        this.corner_size_signals.set(actor, actor.connect('notify::size', () => this.update_corners(win)));
+        actor.connect('destroy', () => this.corner_size_signals.delete(actor));
     }
 
     update_all_corners() {
@@ -1581,6 +1604,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Handle window maximization notifications */
     on_maximize(win: Window.ShellWindow) {
+        this.update_corners(win);
         if (win.is_maximized()) {
             // Raise maximized to top so stacks won't appear over them.
             const actor = win.meta.get_compositor_private();
@@ -2824,6 +2848,8 @@ export default class YatmExtension extends Extension {
             Main.wm.removeKeybinding('panic-reset');
 
             for (const win of ext.windows.values()) guard('remove corners', () => set_rounded_corners(win.meta, 0), log.report)();
+            for (const [actor, id] of ext.corner_size_signals) actor.disconnect(id);
+            ext.corner_size_signals.clear();
 
             if (ext.auto_tiler) {
                 ext.auto_tiler.destroy(ext);
