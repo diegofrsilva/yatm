@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { guard } from '../src/guard.js';
+import { guard, run_steps } from '../src/guard.js';
 
 test('passes arguments and return value through', () => {
     const add = guard('add', (a: number, b: number) => a + b, () => assert.fail('no error expected'));
@@ -23,4 +23,16 @@ test('a throwing cleanup is reported too, never rethrown', () => {
         (_e, ctx) => reported.push(ctx), () => { throw new Error('b'); });
     assert.doesNotThrow(() => f());
     assert.deepEqual(reported, ['drag', 'drag (cleanup)']);
+});
+
+test('run_steps runs every step even when earlier ones throw', () => {
+    const ran: string[] = [];
+    const reported: string[] = [];
+    run_steps('panic', [
+        ['a', () => { ran.push('a'); }],
+        ['b', () => { throw new Error('b'); }],
+        ['c', () => { ran.push('c'); }],
+    ], (_e, ctx) => reported.push(ctx));
+    assert.deepEqual(ran, ['a', 'c']);
+    assert.deepEqual(reported, ['panic: b']);
 });

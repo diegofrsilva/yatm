@@ -18,7 +18,7 @@ import * as auto_tiler from './auto_tiler.js';
 import * as node from './node.js';
 import * as utils from './utils.js';
 import * as Executor from './executor.js';
-import { guard } from './guard.js';
+import { guard, run_steps } from './guard.js';
 import { find_conflicts } from './conflicts.js';
 import * as movement from './movement.js';
 import * as stack from './stack.js';
@@ -2203,6 +2203,23 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
     }
 
+    /** Emergency recovery: works even if internal state is inconsistent. */
+    panic_reset() {
+        log.warn('panic reset');
+        run_steps('panic', [
+            ['clear events', () => this.clear_events()],
+            ['release grab', () => this.unset_grab_op()],
+            ['hide overlay', () => { this.overlay.visible = false; }],
+            ['exit modes', () => this.exit_modes()],
+            ['restart tiler', () => {
+                if (this.auto_tiler) {
+                    this.auto_tile_off();
+                    this.auto_tile_on();
+                }
+            }],
+        ], log.report);
+    }
+
     toggle_tiling() {
         if (this.settings.tile_by_default()) {
             this.auto_tile_off();
@@ -2730,6 +2747,8 @@ export default class YatmExtension extends Extension {
         }
 
         ext.keybindings.enable(ext.keybindings.global).enable(ext.keybindings.window_focus);
+        // ALL so it still fires during a stuck modal grab.
+        Main.wm.addKeybinding('panic-reset', ext.settings.ext, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => ext?.panic_reset());
 
         if (ext.settings.tile_by_default()) {
             ext.auto_tile_on();
@@ -2755,6 +2774,7 @@ export default class YatmExtension extends Extension {
             layoutManager.removeChrome(ext.overlay);
 
             ext.keybindings.disable(ext.keybindings.global).disable(ext.keybindings.window_focus);
+            Main.wm.removeKeybinding('panic-reset');
 
             if (ext.auto_tiler) {
                 ext.auto_tiler.destroy(ext);

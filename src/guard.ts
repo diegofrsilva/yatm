@@ -26,3 +26,8 @@ export function guard<A extends unknown[], R>(
         }
     };
 }
+
+/** Runs every step in order; a throwing step is reported and the rest still run. */
+export function run_steps(context: string, steps: Array<[string, () => void]>, on_error: ErrorSink): void {
+    for (const [name, step] of steps) guard(context + ': ' + name, step, on_error)();
+}

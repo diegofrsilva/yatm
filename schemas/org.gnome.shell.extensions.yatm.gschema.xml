@@ -132,6 +132,11 @@
             <summary>Enter tiling mode</summary>
         </key>
 
+        <key type="as" name="panic-reset">
+            <default><![CDATA[['<Super><Shift>Escape']]]></default>
+            <summary>Emergency reset: release grabs, clear queued events and re-tile</summary>
+        </key>
+
         <key type="as" name="tile-accept">
             <default><![CDATA[['Return','KP_Enter']]]></default>
             <summary>Accept tiling changes</summary>
