@@ -749,7 +749,7 @@ export class Tiler {
             this.window = win.entity;
 
             if (win.is_maximized()) {
-                win.meta.unmaximize(Meta.MaximizeFlags.BOTH);
+                win.meta.set_unmaximize_flags(Meta.MaximizeFlags.BOTH);
             }
 
             // Set overlay to match window
