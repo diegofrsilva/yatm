@@ -3,7 +3,7 @@
     <schema id="org.gnome.shell.extensions.yatm" path="/org/gnome/shell/extensions/yatm/">
         <!-- Appearance Options -->
         <key type="b" name="active-hint">
-            <default>false</default>
+            <default>true</default>
             <summary>Show a hint around the active window</summary>
         </key>
 
@@ -60,7 +60,7 @@
         </key>
 
         <key type="b" name="smart-gaps">
-            <default>false</default>
+            <default>true</default>
             <summary>Hide the outer gap when a tree contains only one window</summary>
         </key>
 
