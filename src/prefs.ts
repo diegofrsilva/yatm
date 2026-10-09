@@ -1,4 +1,6 @@
 import Gtk from 'gi://Gtk';
+import Adw from 'gi://Adw';
+import Gdk from 'gi://Gdk';
 
 import Gio from 'gi://Gio';
 const Settings = Gio.Settings;
@@ -23,18 +25,73 @@ interface AppWidgets {
     max_window_width: any;
 }
 
-export default class PopShellPreferences extends ExtensionPreferences {
-    getPreferencesWidget() {
+export default class YatmPreferences extends ExtensionPreferences {
+    fillPreferencesWindow(window: any) {
         globalThis.yatmExtension = this;
-        let dialog = settings_dialog_new();
-        if (dialog.show_all) {
-            dialog.show_all();
-        } else {
-            dialog.show();
-        }
-        log.debug(JSON.stringify(dialog));
-        return dialog;
+        const ext = new settings.ExtensionSettings();
+
+        const general = new Adw.PreferencesPage({ title: 'General', icon_name: 'preferences-system-symbolic' });
+        const general_group = new Adw.PreferencesGroup();
+        general_group.add(settings_dialog_new());
+        general.add(general_group);
+
+        window.add(appearance_page(ext));
+        window.add(general);
     }
+}
+
+function appearance_page(ext: settings.ExtensionSettings): any {
+    const page = new Adw.PreferencesPage({ title: 'Appearance', icon_name: 'applications-graphics-symbolic' });
+
+    const gaps = new Adw.PreferencesGroup({ title: 'Gaps' });
+    const smart = new Adw.SwitchRow({ title: 'Smart gaps', subtitle: 'No gaps when a workspace has a single window' });
+    ext.ext.bind('smart-gaps', smart, 'active', Gio.SettingsBindFlags.DEFAULT);
+    gaps.add(smart);
+    page.add(gaps);
+
+    const border = new Adw.PreferencesGroup({ title: 'Focus border' });
+    const show = new Adw.SwitchRow({ title: 'Show border on focused window' });
+    ext.ext.bind('active-hint', show, 'active', Gio.SettingsBindFlags.DEFAULT);
+    border.add(show);
+
+    const width = Adw.SpinRow.new_with_range(0, 8, 1);
+    width.set_title('Border width');
+    width.set_subtitle('Pixels; limited to half the inner gap');
+    ext.ext.bind('border-width', width, 'value', Gio.SettingsBindFlags.DEFAULT);
+    border.add(width);
+
+    const accent = new Adw.SwitchRow({ title: 'Use accent color' });
+    accent.set_active(ext.hint_color_custom() === '');
+    const color_row = new Adw.ActionRow({ title: 'Custom color' });
+    const color_button = new Gtk.ColorDialogButton({ dialog: new Gtk.ColorDialog(), valign: Gtk.Align.CENTER });
+    const rgba = new Gdk.RGBA();
+    rgba.parse(ext.hint_color_rgba());
+    color_button.set_rgba(rgba);
+    color_row.add_suffix(color_button);
+    color_row.set_sensitive(!accent.get_active());
+    accent.connect('notify::active', () => {
+        color_row.set_sensitive(!accent.get_active());
+        ext.set_hint_color_rgba(accent.get_active() ? '' : color_button.get_rgba().to_string());
+    });
+    color_button.connect('notify::rgba', () => {
+        if (!accent.get_active()) ext.set_hint_color_rgba(color_button.get_rgba().to_string());
+    });
+    border.add(accent);
+    border.add(color_row);
+    page.add(border);
+
+    const corners = new Adw.PreferencesGroup({ title: 'Corners' });
+    const rounded = new Adw.SwitchRow({ title: 'Rounded corners on tiled windows' });
+    ext.ext.bind('rounded-corners', rounded, 'active', Gio.SettingsBindFlags.DEFAULT);
+    corners.add(rounded);
+    const radius = Adw.SpinRow.new_with_range(0, 24, 1);
+    radius.set_title('Corner radius');
+    ext.ext.bind('corner-radius', radius, 'value', Gio.SettingsBindFlags.DEFAULT);
+    ext.ext.bind('rounded-corners', radius, 'sensitive', Gio.SettingsBindFlags.GET);
+    corners.add(radius);
+    page.add(corners);
+
+    return page;
 }
 
 function settings_dialog_new(): Gtk.Container {
