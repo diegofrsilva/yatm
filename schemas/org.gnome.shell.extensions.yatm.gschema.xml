@@ -133,7 +133,7 @@
         </key>
 
         <key type="as" name="panic-reset">
-            <default><![CDATA[['<Super><Shift>Escape']]]></default>
+            <default><![CDATA[['<Super><Control>Escape']]]></default>
             <summary>Emergency reset: release grabs, clear queued events and re-tile</summary>
         </key>
 
