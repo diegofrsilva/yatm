@@ -13,6 +13,7 @@ debian/*
 .confirm_shortcut_change
 .vscode
 node_modules
-tsconfig.tsbuildinfo.dev
+tsconfig.tsbuildinfo
+.dev
 target-test
 .superpowers

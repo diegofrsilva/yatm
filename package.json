@@ -1,3 +1,10 @@
 {
-    "type": "module"
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "test": "tsc -p tsconfig.test.json && node --test 'target-test/tests/**/*.test.js'"
+    },
+    "devDependencies": {
+        "@types/node": "^22.0.0"
+    }
 }

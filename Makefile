@@ -92,3 +92,6 @@ zip-file: all
 
 dev:
 	./scripts/dev.sh
+
+test:
+	npm test

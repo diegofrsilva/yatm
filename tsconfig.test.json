@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "target": "es2022",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "strict": true,
+        "outDir": "./target-test",
+        "rootDir": ".",
+        "types": ["node"],
+        "skipLibCheck": true
+    },
+    "include": ["tests/**/*.ts", "src/event_queue.ts", "src/guard.ts", "src/conflicts.ts"]
+}

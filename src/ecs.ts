@@ -278,6 +278,11 @@ export class System<T> extends World {
         this.#executor.wake(this, event);
     }
 
+    /** Drops all queued events (used by the panic reset). */
+    clear_events(): void {
+        this.#executor.clear();
+    }
+
     /** Executs an event on the system */
     run(_event: T): void {}
 }

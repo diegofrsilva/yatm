@@ -39,3 +39,8 @@ export function info(text: string) {
 export function debug(text: string) {
     if (log_level() > LOG_LEVELS.INFO) log('[DEBUG] ' + text);
 }
+
+/** Error sink for guarded callbacks: always logged, regardless of log-level. */
+export function report(error: unknown, context: string) {
+    (globalThis as any).logError(error, 'yatm: ' + context);
+}
