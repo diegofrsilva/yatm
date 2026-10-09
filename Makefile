@@ -21,7 +21,7 @@ PROJECTS = color_dialog floating_exceptions
 
 $(info UUID is "$(UUID)")
 
-.PHONY: all clean install zip-file
+.PHONY: all clean install zip-file dev test
 
 sources = src/*.ts *.css
 
@@ -89,3 +89,6 @@ zip-file: all
 	cd _build && zip -qr "../$(UUID)_$(VERSION).zip" .
 
 .NOTPARALLEL: debug local-install
+
+dev:
+	./scripts/dev.sh
