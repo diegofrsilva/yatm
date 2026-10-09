@@ -18,6 +18,7 @@ import * as auto_tiler from './auto_tiler.js';
 import * as node from './node.js';
 import * as utils from './utils.js';
 import * as Executor from './executor.js';
+import { guard } from './guard.js';
 import * as movement from './movement.js';
 import * as stack from './stack.js';
 import * as add_exception from './dialog_add_exception.js';
@@ -1442,7 +1443,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                 const workspace = this.active_workspace();
 
-                this.drag_signal = GLib.timeout_add(GLib.PRIORITY_LOW, 200, () => {
+                const drag_tick = guard('drag overlay', (): boolean => {
                     this.overlay.visible = false;
 
                     if (!win || !this.auto_tiler || !this.grab_op || this.grab_op.entity !== entity) {
@@ -1530,7 +1531,13 @@ export class Ext extends Ecs.System<ExtEvent> {
                     this.overlay.visible = true;
 
                     return true;
+                }, log.report, () => {
+                    // The source is being removed by returning false; don't remove it twice.
+                    this.drag_signal = null;
+                    this.unset_grab_op();
                 });
+
+                this.drag_signal = GLib.timeout_add(GLib.PRIORITY_LOW, 200, () => drag_tick() ?? false);
             }
         }
     }
@@ -2040,31 +2047,24 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.register({ tag: 3, window });
         });
 
-        if (GNOME_VERSION?.startsWith('3.')) {
-            this.connect(display, 'grab-op-begin', (_, _display, win, op) => {
-                this.on_grab_start(win, op);
-            });
+        const release_grab = () => this.unset_grab_op();
+        const grab_start = guard('grab-op-begin', (win: Meta.Window | null, op: any) => this.on_grab_start(win, op), log.report, release_grab);
+        const grab_end = guard('grab-op-end', (win: Meta.Window, op?: any) => this.on_grab_end(win, op), log.report, release_grab);
 
-            this.connect(display, 'grab-op-end', (_, _display, win, op) => {
-                this.register_fn(() => this.on_grab_end(win, op));
-            });
-        } else {
-            // GNOME 40 removed the first argument of the callback
-            this.connect(display, 'grab-op-begin', (_display, win, op) => {
-                this.on_grab_start(win, op);
-            });
+        this.connect(display, 'grab-op-begin', (_display, win, op) => {
+            grab_start(win, op);
+        });
 
-            this.connect(display, 'grab-op-end', (_display, win, op) => {
-                this.register_fn(() => this.on_grab_end(win, op));
-            });
-        }
+        this.connect(display, 'grab-op-end', (_display, win, op) => {
+            this.register_fn(() => grab_end(win, op));
+        });
 
         this.connect(overview, 'window-drag-begin', (_, win) => {
-            this.on_grab_start(win, 1);
+            grab_start(win, 1);
         });
 
         this.connect(overview, 'window-drag-end', (_, win) => {
-            this.register_fn(() => this.on_grab_end(win));
+            this.register_fn(() => grab_end(win));
         });
 
         this.connect(overview, 'window-drag-cancelled', () => {
