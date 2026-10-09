@@ -1,5 +1,6 @@
 import * as log from './log.js';
 import * as rectangle from './rectangle.js';
+import { valid_monitor } from './monitors.js';
 
 import type { Rectangle } from './rectangle.js';
 
@@ -44,9 +45,10 @@ export function bench<T>(name: string, callback: () => T): T {
 }
 
 export function current_monitor(): Rectangle {
-    return rectangle.Rectangle.from_meta(
-        global.display.get_monitor_geometry(global.display.get_current_monitor()) as Rectangular,
-    );
+    const monitor = global.display.get_current_monitor();
+    if (!valid_monitor(monitor, global.display.get_n_monitors())) return new rectangle.Rectangle([0, 0, 0, 0]);
+
+    return rectangle.Rectangle.from_meta(global.display.get_monitor_geometry(monitor) as Rectangular);
 }
 
 // Fetch rectangle that represents the cursor
