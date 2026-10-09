@@ -20,6 +20,7 @@ import * as utils from './utils.js';
 import * as Executor from './executor.js';
 import { guard, run_steps } from './guard.js';
 import { find_conflicts } from './conflicts.js';
+import { restart_tiler_steps } from './panic.js';
 import * as movement from './movement.js';
 import * as stack from './stack.js';
 import * as add_exception from './dialog_add_exception.js';
@@ -2211,12 +2212,13 @@ export class Ext extends Ecs.System<ExtEvent> {
             ['release grab', () => this.unset_grab_op()],
             ['hide overlay', () => { this.overlay.visible = false; }],
             ['exit modes', () => this.exit_modes()],
-            ['restart tiler', () => {
-                if (this.auto_tiler) {
-                    this.auto_tile_off();
-                    this.auto_tile_on();
-                }
-            }],
+            ...restart_tiler_steps({
+                running: () => this.auto_tiler !== null,
+                enabled_by_default: () => this.settings.tile_by_default(),
+                stop: () => this.auto_tile_off(),
+                forget: () => { this.auto_tiler = null; },
+                start: () => this.auto_tile_on(),
+            }),
         ], log.report);
     }
 

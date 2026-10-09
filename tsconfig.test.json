@@ -9,5 +9,5 @@
         "types": ["node"],
         "skipLibCheck": true
     },
-    "include": ["tests/**/*.ts", "src/event_queue.ts", "src/guard.ts", "src/conflicts.ts", "src/monitors.ts"]
+    "include": ["tests/**/*.ts", "src/event_queue.ts", "src/guard.ts", "src/conflicts.ts", "src/monitors.ts", "src/panic.ts"]
 }
