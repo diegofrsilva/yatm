@@ -17,6 +17,7 @@ import Shell from 'gi://Shell';
 import St from 'gi://St';
 import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { fit_border_width, border_radius_for } from './appearance.js';
 
 const { OnceCell } = once_cell;
 
@@ -655,10 +656,13 @@ export class ShellWindow {
 
     update_border_style() {
         const { settings } = this.ext;
-        const color_value = settings.hint_color_rgba();
-        const radius_value = settings.active_hint_border_radius();
+        const width = fit_border_width(settings.border_width(), this.ext.gap_inner);
+        const corner = settings.rounded_corners() ? settings.corner_radius() : 0;
+        const radius = border_radius_for(corner, width);
         if (this.border) {
-            this.border.set_style(`border-color: ${color_value}; border-radius: ${radius_value}px;`);
+            this.border.set_style(
+                `border-color: ${settings.hint_color_rgba()}; border-radius: ${radius}px; border-width: ${width}px;`,
+            );
         }
     }
 

@@ -2,6 +2,7 @@
 import Gio from 'gi://Gio';
 import Gdk from 'gi://Gdk';
 import { get_current_path } from './paths.js';
+import { resolve_border_color } from './appearance.js';
 
 const DARK = ['dark', 'adapta', 'plata', 'dracula'];
 
@@ -50,7 +51,9 @@ function settings_new_schema(schema: string): Settings {
 }
 
 const ACTIVE_HINT = 'active-hint';
-const ACTIVE_HINT_BORDER_RADIUS = 'active-hint-border-radius';
+const BORDER_WIDTH = 'border-width';
+const ROUNDED_CORNERS = 'rounded-corners';
+const CORNER_RADIUS = 'corner-radius';
 const STACKING_WITH_MOUSE = 'stacking-with-mouse';
 const COLUMN_SIZE = 'column-size';
 const EDGE_TILING = 'edge-tiling';
@@ -63,7 +66,6 @@ const SMART_GAPS = 'smart-gaps';
 const SNAP_TO_GRID = 'snap-to-grid';
 const TILE_BY_DEFAULT = 'tile-by-default';
 const HINT_COLOR_RGBA = 'hint-color-rgba';
-const DEFAULT_RGBA_COLOR = 'rgba(251, 184, 108, 1)'; //pop-orange
 const LOG_LEVEL = 'log-level';
 const SHOW_SKIPTASKBAR = 'show-skip-taskbar';
 const MOUSE_CURSOR_FOLLOWS_ACTIVE_WINDOW = 'mouse-cursor-follows-active-window';
@@ -82,9 +84,6 @@ export class ExtensionSettings {
         return this.ext.get_boolean(ACTIVE_HINT);
     }
 
-    active_hint_border_radius(): number {
-        return this.ext.get_uint(ACTIVE_HINT_BORDER_RADIUS);
-    }
 
     stacking_with_mouse(): boolean {
         return this.ext.get_boolean(STACKING_WITH_MOUSE);
@@ -110,15 +109,30 @@ export class ExtensionSettings {
         return this.ext.get_uint(GAP_OUTER);
     }
 
-    hint_color_rgba() {
-        let rgba = this.ext.get_string(HINT_COLOR_RGBA);
-        let valid_color = new Gdk.RGBA().parse(rgba);
+    /** Raw custom color; '' when unset or invalid (then the accent color is used). */
+    hint_color_custom(): string {
+        const rgba = this.ext.get_string(HINT_COLOR_RGBA);
+        return rgba !== '' && new Gdk.RGBA().parse(rgba) ? rgba : '';
+    }
 
-        if (!valid_color) {
-            return DEFAULT_RGBA_COLOR;
-        }
+    hint_color_rgba(): string {
+        return resolve_border_color(this.hint_color_custom(), this.accent_color());
+    }
 
-        return rgba;
+    accent_color(): string {
+        return this.int ? this.int.get_string('accent-color') : 'blue';
+    }
+
+    border_width(): number {
+        return this.ext.get_uint(BORDER_WIDTH);
+    }
+
+    rounded_corners(): boolean {
+        return this.ext.get_boolean(ROUNDED_CORNERS);
+    }
+
+    corner_radius(): number {
+        return this.ext.get_uint(CORNER_RADIUS);
     }
 
     theme(): string {
@@ -184,8 +198,16 @@ export class ExtensionSettings {
         this.ext.set_boolean(ACTIVE_HINT, set);
     }
 
-    set_active_hint_border_radius(set: number) {
-        this.ext.set_uint(ACTIVE_HINT_BORDER_RADIUS, set);
+    set_border_width(set: number) {
+        this.ext.set_uint(BORDER_WIDTH, set);
+    }
+
+    set_rounded_corners(set: boolean) {
+        this.ext.set_boolean(ROUNDED_CORNERS, set);
+    }
+
+    set_corner_radius(set: number) {
+        this.ext.set_uint(CORNER_RADIUS, set);
     }
 
     set_stacking_with_mouse(set: boolean) {
@@ -212,14 +234,10 @@ export class ExtensionSettings {
         this.ext.set_uint(GAP_OUTER, gap);
     }
 
+    /** An empty or invalid color stores '' (follow the accent color). */
     set_hint_color_rgba(rgba: string) {
-        let valid_color = new Gdk.RGBA().parse(rgba);
-
-        if (valid_color) {
-            this.ext.set_string(HINT_COLOR_RGBA, rgba);
-        } else {
-            this.ext.set_string(HINT_COLOR_RGBA, DEFAULT_RGBA_COLOR);
-        }
+        const valid_color = rgba !== '' && new Gdk.RGBA().parse(rgba);
+        this.ext.set_string(HINT_COLOR_RGBA, valid_color ? rgba : '');
     }
 
     set_row_size(size: number) {

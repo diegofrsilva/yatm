@@ -6,11 +6,17 @@
             <default>true</default>
             <summary>Show a hint around the active window</summary>
         </key>
-
-        <key type="u" name="active-hint-border-radius">
-            <default>5</default>
-            <range min="0" max="30"/>
-            <summary>Border radius for active window hint, in pixels</summary>
+        <key type="u" name="border-width">
+            <default>2</default>
+            <summary>Focus border width in px (clamped to half the inner gap)</summary>
+        </key>
+        <key type="b" name="rounded-corners">
+            <default>true</default>
+            <summary>Round the corners of tiled windows</summary>
+        </key>
+        <key type="u" name="corner-radius">
+            <default>8</default>
+            <summary>Corner radius of tiled windows in px</summary>
         </key>
 
         <key type="b" name="fullscreen-launcher">
@@ -279,7 +285,7 @@
         </key>
 
         <key type="s" name="hint-color-rgba">
-            <default>'rgba(251, 184, 108, 1)'</default>
+            <default>''</default>
             <summary>The current active-hint-color in RGBA</summary>
         </key>
         <key type="u" name="log-level">

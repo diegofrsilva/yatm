@@ -999,6 +999,9 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.update_inner_gap();
             Gio.Settings.sync();
         }
+
+        // The border width is clamped to half the inner gap.
+        this.show_border_on_focused();
     }
 
     update_inner_gap() {
@@ -1912,12 +1915,25 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
         });
 
+        if (this.settings.int) {
+            this.connect(this.settings.int, 'changed::accent-color', () => {
+                for (const win of this.windows.values()) win.update_border_style();
+                this.show_border_on_focused();
+            });
+        }
+
         this.connect(this.settings.ext, 'changed', (_s, key: string) => {
             switch (key) {
                 case 'active-hint':
                     if (indicator) indicator.toggle_active.setToggleState(this.settings.active_hint());
 
                     this.show_border_on_focused();
+                case 'border-width':
+                case 'corner-radius':
+                case 'rounded-corners':
+                case 'hint-color-rgba':
+                    this.show_border_on_focused();
+                    break;
                 case 'gap-inner':
                     this.on_gap_inner();
                     break;

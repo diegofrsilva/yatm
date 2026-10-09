@@ -272,7 +272,7 @@ export class Stack {
         let result = `0px 0px 0px 0px`;
 
         // the minus 4px is to accomodate the inner radius being tighter
-        let radius = Math.max(0, this.ext.settings.active_hint_border_radius() - 4);
+        let radius = Math.max(0, this.ext.settings.corner_radius() - 4);
         // only allow a radius up to half the tab_height
         radius = Math.min(radius, Math.trunc(this.tabs_height / 2));
         // set each corner's radius based on it's order

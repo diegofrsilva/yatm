@@ -68,14 +68,14 @@ export class Indicator {
         });
 
         this.border_radius = number_entry(
-            _('Active Border Radius'),
+            _('Corner Radius'),
             {
-                value: ext.settings.active_hint_border_radius(),
+                value: ext.settings.corner_radius(),
                 min: 0,
                 max: 30,
             },
             (value) => {
-                ext.settings.set_active_hint_border_radius(value);
+                ext.settings.set_corner_radius(value);
             },
         );
 
