@@ -60,6 +60,16 @@ declare module 'gi://Shell' {
     export default Shell;
 }
 
+declare module 'gi://Cogl' {
+    let Cogl: any;
+    export default Cogl;
+}
+
+declare module 'gi://Adw' {
+    let Adw: any;
+    export default Adw;
+}
+
 declare module 'gi://Meta' {
     let Meta: any;
     export default Meta;

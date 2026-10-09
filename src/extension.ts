@@ -21,6 +21,7 @@ import * as Executor from './executor.js';
 import { guard, run_steps } from './guard.js';
 import { find_conflicts } from './conflicts.js';
 import { restart_tiler_steps } from './panic.js';
+import { set_rounded_corners } from './rounded_corners.js';
 import * as movement from './movement.js';
 import * as stack from './stack.js';
 import * as add_exception from './dialog_add_exception.js';
@@ -514,6 +515,8 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.connect_size_signal(win, 'notify::minimized', () => {
                 this.register(Events.window_event(win, WindowEvent.Minimize));
             }),
+
+            this.connect_meta(win, 'size-changed', () => this.update_corners(win)),
         ]);
     }
 
@@ -952,16 +955,29 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
 
             this.auto_tiler.attached.insert(window, entity);
+            this.windows.with(window, (w) => this.update_corners(w));
         }
     }
 
     on_tile_detach(win: Entity) {
         this.windows.with(win, (window) => {
+            this.register_fn(() => this.update_corners(window));
             if (window.prev_rect && !window.ignore_detach) {
                 this.register(Events.window_move(this, window, window.prev_rect));
                 window.prev_rect = null;
             }
         });
+    }
+
+    /** Rounded corners only on windows the auto-tiler manages. */
+    update_corners(win: Window.ShellWindow) {
+        const tiled = this.auto_tiler !== null && this.auto_tiler.attached.contains(win.entity);
+        const radius = tiled && this.settings.rounded_corners() ? this.settings.corner_radius() : 0;
+        guard('rounded corners', () => set_rounded_corners(win.meta, radius), log.report)();
+    }
+
+    update_all_corners() {
+        for (const win of this.windows.values()) this.update_corners(win);
     }
 
     show_border_on_focused() {
@@ -1928,9 +1944,12 @@ export class Ext extends Ecs.System<ExtEvent> {
                     if (indicator) indicator.toggle_active.setToggleState(this.settings.active_hint());
 
                     this.show_border_on_focused();
-                case 'border-width':
                 case 'corner-radius':
                 case 'rounded-corners':
+                    this.update_all_corners();
+                    this.show_border_on_focused();
+                    break;
+                case 'border-width':
                 case 'hint-color-rgba':
                     this.show_border_on_focused();
                     break;
@@ -2264,6 +2283,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                 this.show_border_on_focused();
             }
         }
+
+        this.update_all_corners();
     }
 
     auto_tile_on() {
@@ -2298,6 +2319,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         this.register_fn(() => this.switch_to_workspace(original));
+        this.update_all_corners();
     }
 
     /** Calls a function once windows are no longer queued for movement. */
@@ -2800,6 +2822,8 @@ export default class YatmExtension extends Extension {
 
             ext.keybindings.disable(ext.keybindings.global).disable(ext.keybindings.window_focus);
             Main.wm.removeKeybinding('panic-reset');
+
+            for (const win of ext.windows.values()) guard('remove corners', () => set_rounded_corners(win.meta, 0), log.report)();
 
             if (ext.auto_tiler) {
                 ext.auto_tiler.destroy(ext);
