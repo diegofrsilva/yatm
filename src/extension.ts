@@ -24,6 +24,8 @@ import { restart_tiler_steps } from './panic.js';
 import { window_corner_radius } from './corners.js';
 import { set_rounded_corners } from './rounded_corners.js';
 import { WindowAnimator } from './animator.js';
+import { Dimmer } from './dimmer.js';
+import { dim_level } from './anim_math.js';
 import { retime_workspace_switch } from './workspace_anim.js';
 import * as movement from './movement.js';
 import * as stack from './stack.js';
@@ -172,6 +174,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** notify::size handlers on window actors, for rounded-corner bounds. */
     corner_size_signals: Map<Clutter.Actor, SignalID> = new Map();
+
+    /** Dims inactive tiled windows. */
+    dimmer: Dimmer = new Dimmer();
 
     /** Tiling motion and open animations. */
     animator: WindowAnimator = new WindowAnimator(
@@ -413,6 +418,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                         }
 
                         this.update_corners(win);
+                        this.update_all_dim();
                         break;
                 }
 
@@ -967,6 +973,8 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             log.debug(msg + '}');
         }
+
+        this.update_all_dim();
     }
 
     on_tile_attach(entity: Entity, window: Entity) {
@@ -981,12 +989,16 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             this.auto_tiler.attached.insert(window, entity);
             this.windows.with(window, (w) => this.update_corners(w));
+            this.update_all_dim();
         }
     }
 
     on_tile_detach(win: Entity) {
         this.windows.with(win, (window) => {
-            this.register_fn(() => this.update_corners(window));
+            this.register_fn(() => {
+                this.update_corners(window);
+                this.update_all_dim();
+            });
             if (window.prev_rect && !window.ignore_detach) {
                 this.register(Events.window_move(this, window, window.prev_rect));
                 window.prev_rect = null;
@@ -1019,6 +1031,23 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     update_all_corners() {
         for (const win of this.windows.values()) this.update_corners(win);
+    }
+
+    update_dim(win: Window.ShellWindow) {
+        if (win.destroying) return;
+        const level = dim_level({
+            enabled: this.settings.dim_inactive(),
+            amount: this.settings.dim_amount(),
+            tiled: this.auto_tiler !== null && this.auto_tiler.attached.contains(win.entity),
+            focused: this.focus_window() === win,
+            fullscreen: win.meta.is_fullscreen(),
+        });
+        const duration = this.settings.animations_active() ? this.settings.animation_duration() : 0;
+        guard('dim', () => this.dimmer.set_level(win.meta, level, duration), log.report)();
+    }
+
+    update_all_dim() {
+        for (const win of this.windows.values()) this.update_dim(win);
     }
 
     show_border_on_focused() {
@@ -1990,6 +2019,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                     if (indicator) indicator.toggle_active.setToggleState(this.settings.active_hint());
 
                     this.show_border_on_focused();
+                case 'dim-inactive':
+                case 'dim-amount':
+                    this.update_all_dim();
+                    break;
                 case 'animations-enabled':
                     if (!this.settings.animations_enabled()) this.animator.cancel_all();
                     break;
@@ -2302,6 +2335,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         log.warn('panic reset');
         run_steps('panic', [
             ['cancel animations', () => this.animator.cancel_all()],
+            ['clear dim', () => this.dimmer.clear_all()],
             ['clear events', () => this.clear_events()],
             ['release grab', () => this.unset_grab_op()],
             ['hide overlay', () => { this.overlay.visible = false; }],
@@ -2344,6 +2378,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         this.update_all_corners();
+        this.update_all_dim();
     }
 
     auto_tile_on() {
@@ -2379,6 +2414,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         this.register_fn(() => this.switch_to_workspace(original));
         this.update_all_corners();
+        this.update_all_dim();
     }
 
     /** Calls a function once windows are no longer queued for movement. */
@@ -2885,6 +2921,7 @@ export default class YatmExtension extends Extension {
             Main.wm.removeKeybinding('panic-reset');
 
             ext.animator.cancel_all();
+            ext.dimmer.clear_all();
             for (const win of ext.windows.values()) guard('remove corners', () => set_rounded_corners(win.meta, 0), log.report)();
             for (const [actor, id] of ext.corner_size_signals) actor.disconnect(id);
             ext.corner_size_signals.clear();
