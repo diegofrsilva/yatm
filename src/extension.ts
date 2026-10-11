@@ -2125,6 +2125,15 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
 
         this.connect(display, 'window_created', (_, window: Meta.Window) => {
+            // Synchronously, before GNOME's map effect runs: our own open effect replaces it.
+            guard('open animation', () => {
+                if (!this.auto_tiler || (window as any).get_window_type() !== Meta.WindowType.NORMAL) return;
+                if (!this.settings.animations_active() || !this.settings.animate_open_close()) return;
+                const actor = window.get_compositor_private();
+                if (!actor) return;
+                Main.wm.skipNextEffect(actor);
+                this.animator.mark_opening(window);
+            }, log.report)();
             this.register({ tag: 3, window });
         });
 
@@ -2717,10 +2726,12 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Raising a window before it is mapped trips Mutter's stack-position
                 // assertion; wait for its first frame like the tiled path does.
                 let id = actor.connect('first-frame', () => {
+                    this.animator.reveal(win.meta);
                     grab_focus();
                     actor.disconnect(id);
                 });
             } else {
+                this.animator.reveal(win.meta);
                 grab_focus();
             }
         }
