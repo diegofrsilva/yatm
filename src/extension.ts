@@ -23,6 +23,7 @@ import { find_conflicts } from './conflicts.js';
 import { restart_tiler_steps } from './panic.js';
 import { window_corner_radius } from './corners.js';
 import { set_rounded_corners } from './rounded_corners.js';
+import { WindowAnimator } from './animator.js';
 import * as movement from './movement.js';
 import * as stack from './stack.js';
 import * as add_exception from './dialog_add_exception.js';
@@ -170,6 +171,19 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** notify::size handlers on window actors, for rounded-corner bounds. */
     corner_size_signals: Map<Clutter.Actor, SignalID> = new Map();
+
+    /** Tiling motion and open animations. */
+    animator: WindowAnimator = new WindowAnimator(
+        {
+            motion: () => this.settings.animations_active(),
+            open: () => this.settings.animations_active() && this.settings.animate_open_close(),
+            duration: () => this.settings.animation_duration(),
+            curve: () => this.settings.animation_curve(),
+        },
+        (meta) => {
+            if (this.focus_window()?.meta === meta) this.show_border_on_focused();
+        },
+    );
 
     /** Previously-set value of the inner gap */
     gap_inner_prev: number = 0;
@@ -338,8 +352,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                         return;
                     }
 
-                    actor.remove_all_transitions();
                     const { x, y, width, height } = movement;
+                    this.animator.before_move(window.meta, movement);
+                    if (this.animator.is_animating(window.meta) && this.focus_window() === window) window.hide_border();
 
                     window.meta.move_resize_frame(true, x, y, width, height);
                     window.meta.move_frame(true, x, y);
@@ -1956,6 +1971,10 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
 
         if (this.settings.int) {
+            this.connect(this.settings.int, 'changed::enable-animations', () => {
+                if (!this.settings.animations_active()) this.animator.cancel_all();
+            });
+
             this.connect(this.settings.int, 'changed::accent-color', () => {
                 for (const win of this.windows.values()) win.update_border_style();
                 this.show_border_on_focused();
@@ -1968,6 +1987,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                     if (indicator) indicator.toggle_active.setToggleState(this.settings.active_hint());
 
                     this.show_border_on_focused();
+                case 'animations-enabled':
+                    if (!this.settings.animations_enabled()) this.animator.cancel_all();
+                    break;
                 case 'corner-radius':
                 case 'rounded-corners':
                     this.update_all_corners();
@@ -2267,6 +2289,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     panic_reset() {
         log.warn('panic reset');
         run_steps('panic', [
+            ['cancel animations', () => this.animator.cancel_all()],
             ['clear events', () => this.clear_events()],
             ['release grab', () => this.unset_grab_op()],
             ['hide overlay', () => { this.overlay.visible = false; }],
@@ -2847,6 +2870,7 @@ export default class YatmExtension extends Extension {
             ext.keybindings.disable(ext.keybindings.global).disable(ext.keybindings.window_focus);
             Main.wm.removeKeybinding('panic-reset');
 
+            ext.animator.cancel_all();
             for (const win of ext.windows.values()) guard('remove corners', () => set_rounded_corners(win.meta, 0), log.report)();
             for (const [actor, id] of ext.corner_size_signals) actor.disconnect(id);
             ext.corner_size_signals.clear();
