@@ -24,6 +24,7 @@ import { restart_tiler_steps } from './panic.js';
 import { window_corner_radius } from './corners.js';
 import { set_rounded_corners } from './rounded_corners.js';
 import { WindowAnimator } from './animator.js';
+import { retime_workspace_switch } from './workspace_anim.js';
 import * as movement from './movement.js';
 import * as stack from './stack.js';
 import * as add_exception from './dialog_add_exception.js';
@@ -759,6 +760,8 @@ export class Ext extends Ecs.System<ExtEvent> {
             screen_unlock_fn.apply(screenShield, [args]);
             this.update_display_configuration(true);
         });
+
+        guard('workspace animation', () => retime_workspace_switch(this), log.report)();
     }
 
     injections_remove() {
