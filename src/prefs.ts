@@ -91,6 +91,46 @@ function appearance_page(ext: settings.ExtensionSettings): any {
     corners.add(radius);
     page.add(corners);
 
+    const anim = new Adw.PreferencesGroup({ title: 'Animations' });
+    const anim_on = new Adw.SwitchRow({ title: 'Animations', subtitle: 'Also off when GNOME "Reduce animations" is on' });
+    ext.ext.bind('animations-enabled', anim_on, 'active', Gio.SettingsBindFlags.DEFAULT);
+    anim.add(anim_on);
+
+    const duration = Adw.SpinRow.new_with_range(50, 1000, 10);
+    duration.set_title('Duration');
+    duration.set_subtitle('Milliseconds');
+    ext.ext.bind('animation-duration-ms', duration, 'value', Gio.SettingsBindFlags.DEFAULT);
+    anim.add(duration);
+
+    const curves = ['ease-out-cubic', 'ease-out-expo'];
+    const curve = new Adw.ComboRow({ title: 'Curve', model: Gtk.StringList.new(['Smooth (ease-out cubic)', 'Snappy (ease-out expo)']) });
+    curve.set_selected(Math.max(0, curves.indexOf(ext.ext.get_string('animation-curve'))));
+    curve.connect('notify::selected', () => ext.ext.set_string('animation-curve', curves[curve.get_selected()] ?? curves[0]));
+    anim.add(curve);
+
+    const open = new Adw.SwitchRow({ title: 'Open animation', subtitle: 'Scale and fade new windows in at their tile' });
+    ext.ext.bind('animate-open-close', open, 'active', Gio.SettingsBindFlags.DEFAULT);
+    anim.add(open);
+
+    const ws = new Adw.SwitchRow({ title: 'Workspace slide timing', subtitle: "Use this duration and curve for GNOME's workspace slide" });
+    ext.ext.bind('animate-workspace', ws, 'active', Gio.SettingsBindFlags.DEFAULT);
+    anim.add(ws);
+
+    for (const row of [duration, curve, open, ws]) ext.ext.bind('animations-enabled', row, 'sensitive', Gio.SettingsBindFlags.GET);
+    page.add(anim);
+
+    const dim = new Adw.PreferencesGroup({ title: 'Inactive windows' });
+    const dim_on = new Adw.SwitchRow({ title: 'Dim inactive tiled windows' });
+    ext.ext.bind('dim-inactive', dim_on, 'active', Gio.SettingsBindFlags.DEFAULT);
+    dim.add(dim_on);
+    const amount = Adw.SpinRow.new_with_range(0, 90, 5);
+    amount.set_title('Dim amount');
+    amount.set_subtitle('Percent');
+    ext.ext.bind('dim-amount', amount, 'value', Gio.SettingsBindFlags.DEFAULT);
+    ext.ext.bind('dim-inactive', amount, 'sensitive', Gio.SettingsBindFlags.GET);
+    dim.add(amount);
+    page.add(dim);
+
     return page;
 }
 
