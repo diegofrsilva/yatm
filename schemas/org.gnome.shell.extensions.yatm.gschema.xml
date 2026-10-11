@@ -18,6 +18,40 @@
             <default>15</default>
             <summary>Corner radius of tiled windows in px</summary>
         </key>
+        <key type="b" name="animations-enabled">
+            <default>true</default>
+            <summary>Animate window movement, opening and workspace switches</summary>
+        </key>
+        <key type="u" name="animation-duration-ms">
+            <range min="50" max="1000"/>
+            <default>200</default>
+            <summary>Animation duration in milliseconds</summary>
+        </key>
+        <key type="s" name="animation-curve">
+            <choices>
+                <choice value="ease-out-cubic"/>
+                <choice value="ease-out-expo"/>
+            </choices>
+            <default>'ease-out-cubic'</default>
+            <summary>Animation easing curve</summary>
+        </key>
+        <key type="b" name="animate-open-close">
+            <default>true</default>
+            <summary>Scale and fade new windows in at their tile</summary>
+        </key>
+        <key type="b" name="animate-workspace">
+            <default>true</default>
+            <summary>Use yatm's duration and curve for the workspace slide</summary>
+        </key>
+        <key type="b" name="dim-inactive">
+            <default>true</default>
+            <summary>Dim inactive tiled windows</summary>
+        </key>
+        <key type="u" name="dim-amount">
+            <range min="0" max="90"/>
+            <default>15</default>
+            <summary>How much to dim inactive tiled windows, in percent</summary>
+        </key>
 
         <key type="b" name="fullscreen-launcher">
             <default>false</default>

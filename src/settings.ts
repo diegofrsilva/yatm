@@ -3,6 +3,7 @@ import Gio from 'gi://Gio';
 import Gdk from 'gi://Gdk';
 import { get_current_path } from './paths.js';
 import { resolve_border_color } from './appearance.js';
+import { parse_curve, type Curve } from './anim_math.js';
 
 const DARK = ['dark', 'adapta', 'plata', 'dracula'];
 
@@ -133,6 +134,39 @@ export class ExtensionSettings {
 
     corner_radius(): number {
         return this.ext.get_uint(CORNER_RADIUS);
+    }
+
+    animations_enabled(): boolean {
+        return this.ext.get_boolean('animations-enabled');
+    }
+
+    /** yatm animations on AND GNOME's "reduce animations" off. */
+    animations_active(): boolean {
+        return this.animations_enabled() && (this.int ? this.int.get_boolean('enable-animations') : true);
+    }
+
+    animation_duration(): number {
+        return this.ext.get_uint('animation-duration-ms');
+    }
+
+    animation_curve(): Curve {
+        return parse_curve(this.ext.get_string('animation-curve'));
+    }
+
+    animate_open_close(): boolean {
+        return this.ext.get_boolean('animate-open-close');
+    }
+
+    animate_workspace(): boolean {
+        return this.ext.get_boolean('animate-workspace');
+    }
+
+    dim_inactive(): boolean {
+        return this.ext.get_boolean('dim-inactive');
+    }
+
+    dim_amount(): number {
+        return this.ext.get_uint('dim-amount');
     }
 
     theme(): string {
