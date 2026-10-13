@@ -360,7 +360,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                     }
 
                     const { x, y, width, height } = movement;
-                    this.animator.before_move(window.meta, movement);
+                    // Neighbours follow a live resize directly; easing would lag behind the pointer.
+                    if (this.live_resize) this.animator.cancel(window.meta);
+                    else this.animator.before_move(window.meta, movement);
                     if (this.animator.is_animating(window.meta) && this.focus_window() === window) window.hide_border();
 
                     window.meta.move_resize_frame(true, x, y, width, height);
@@ -1200,6 +1202,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     on_grab_end_(win: Window.ShellWindow, op?: any) {
+        this.stop_live_resize();
         this.moved_by_mouse = true;
         this.size_signals_unblock(win);
 
@@ -1260,40 +1263,84 @@ export class Ext extends Ecs.System<ExtEvent> {
                     }
                 }
             } else {
-                const fork_entity = this.auto_tiler.attached.get(win.entity);
-                if (fork_entity) {
-                    const forest = this.auto_tiler.forest;
-                    const fork = forest.forks.get(fork_entity);
-                    if (fork) {
-                        if (win.stack) {
-                            const tab_dimension = this.dpi * stack.TAB_HEIGHT;
-                            crect.height += tab_dimension;
-                            crect.y -= tab_dimension;
-                        }
-
-                        let top_level = forest.find_toplevel(this.workspace_id());
-                        if (top_level) {
-                            crect.clamp((forest.forks.get(top_level) as Fork).area);
-                        }
-
-                        const movement = grab_op.operation(crect);
-
-                        if (this.movement_is_valid(win, movement)) {
-                            forest.resize(this, fork_entity, fork, win.entity, movement, crect);
-                            forest.arrange(this, fork.workspace);
-                        } else {
-                            forest.tile(this, fork, fork.area);
-                        }
-                    } else {
-                        log.error(`no fork component found`);
-                    }
-                } else {
-                    log.error(`no fork entity found`);
-                }
+                this.apply_resize(win, grab_op, false);
             }
         } else if (this.settings.snap_to_grid()) {
             this.tiler.snap(this, win);
         }
+    }
+
+    /**
+     * Re-tiles around a window being resized with the mouse or keyboard. Live
+     * (during the drag) it lays out every window but the resized one, which
+     * GNOME is still sizing; on release it lays out everything.
+     */
+    apply_resize(win: Window.ShellWindow, grab_op: GrabOp.GrabOp, live: boolean) {
+        if (!this.auto_tiler) return;
+
+        const fork_entity = this.auto_tiler.attached.get(win.entity);
+        if (!fork_entity) {
+            if (!live) log.error(`no fork entity found`);
+            return;
+        }
+
+        const forest = this.auto_tiler.forest;
+        const fork = forest.forks.get(fork_entity);
+        if (!fork) {
+            if (!live) log.error(`no fork component found`);
+            return;
+        }
+
+        let crect = win.rect();
+        if (win.stack !== null) {
+            const tab_dimension = this.dpi * stack.TAB_HEIGHT;
+            crect.height += tab_dimension;
+            crect.y -= tab_dimension;
+        }
+
+        let top_level = forest.find_toplevel(this.workspace_id());
+        if (top_level) {
+            crect.clamp((forest.forks.get(top_level) as Fork).area);
+        }
+
+        const movement = grab_op.operation(crect);
+
+        if (this.movement_is_valid(win, movement)) {
+            forest.resize(this, fork_entity, fork, win.entity, movement, crect);
+            forest.arrange(this, fork.workspace);
+        } else if (!live) {
+            forest.tile(this, fork, fork.area);
+        }
+    }
+
+    /** Window being resized interactively; its neighbours follow while dragging. */
+    live_resize: { entity: Entity; meta: Meta.Window; signal: SignalID; timeout: number } | null = null;
+
+    start_live_resize(win: Window.ShellWindow) {
+        this.stop_live_resize();
+        const live = { entity: win.entity, meta: win.meta, signal: 0 as SignalID, timeout: 0 };
+
+        // At most one re-tile per frame, however fast the size changes.
+        live.signal = win.meta.connect('size-changed', () => {
+            if (live.timeout) return;
+            live.timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => {
+                live.timeout = 0;
+                if (this.live_resize === live && this.grab_op) {
+                    guard('live resize', () => this.apply_resize(win, this.grab_op as GrabOp.GrabOp, true), log.report)();
+                }
+                return GLib.SOURCE_REMOVE;
+            });
+        });
+
+        this.live_resize = live;
+    }
+
+    stop_live_resize() {
+        const live = this.live_resize;
+        if (!live) return;
+        this.live_resize = null;
+        live.meta.disconnect(live.signal);
+        if (live.timeout) GLib.source_remove(live.timeout);
     }
 
     previously_focused(active: Window.ShellWindow): null | Ecs.Entity {
@@ -1541,6 +1588,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                 this.grab_op = new GrabOp.GrabOp(entity, rect);
 
                 this.size_signals_block(win);
+
+                if (is_resize_op(op) && this.auto_tiler?.attached.contains(entity)) this.start_live_resize(win);
 
                 /** Display an overlay indicating where the window will be placed if dropped */
 
@@ -2457,6 +2506,8 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     unset_grab_op() {
+        this.stop_live_resize();
+
         if (this.drag_signal !== null) {
             this.overlay.visible = false;
             GLib.source_remove(this.drag_signal);

@@ -99,6 +99,9 @@ export class Forest extends Ecs.World {
             const window = ext.windows.get(entity);
             if (!window) continue;
 
+            // GNOME is sizing this one: an interactive resize is in progress.
+            if (ext.live_resize && Ecs.entity_eq(ext.live_resize.entity, entity)) continue;
+
             let on_complete = () => {
                 if (!window.actor_exists()) return;
             };
