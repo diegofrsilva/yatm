@@ -71,6 +71,11 @@ export function is_identity(t: Transform): boolean {
     );
 }
 
+/** Plain copy of a rectangle. Spreading does not work: yatm's Rectangle keeps its values behind getters. */
+export function copy_box(r: Box): Box {
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+}
+
 /** The client has committed the requested geometry (within 1 px). */
 export function frame_reached(frame: Box, target: Box): boolean {
     return (

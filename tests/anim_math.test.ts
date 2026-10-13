@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     curve_value, parse_curve, IDENTITY, transform_for, visual_frame, transform_at,
-    is_identity, frame_reached, dim_level, should_retime_switch,
+    is_identity, frame_reached, dim_level, should_retime_switch, copy_box,
 } from '../src/anim_math.js';
 
 const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-6, `${a} != ${b}`);
@@ -86,4 +86,19 @@ test('only GNOME default-timed (keyboard) workspace switches are retimed', () =>
     assert.ok(should_retime_switch(250, 250));
     assert.ok(!should_retime_switch(180, 250));
     assert.ok(!should_retime_switch(undefined, 250));
+});
+
+test('copy_box reads getter-based rectangles (yatm Rectangle keeps values in an array)', () => {
+    class GetterRect {
+        array = [8, 40, 922, 466.5];
+        get x() { return this.array[0]; }
+        get y() { return this.array[1]; }
+        get width() { return this.array[2]; }
+        get height() { return this.array[3]; }
+    }
+    const src = new GetterRect();
+    const copy = copy_box(src);
+    src.array[2] = 1; // later mutation of the source must not leak into the copy
+    assert.deepEqual(copy, { x: 8, y: 40, width: 922, height: 466.5 });
+    assert.ok(frame_reached({ x: 8, y: 40, width: 922, height: 466 }, copy));
 });

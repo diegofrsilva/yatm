@@ -2,7 +2,7 @@ import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 
 import {
-    IDENTITY, curve_value, frame_reached, is_identity, transform_at, transform_for, visual_frame,
+    IDENTITY, copy_box, curve_value, frame_reached, is_identity, transform_at, transform_for, visual_frame,
     type Curve, type Transform,
 } from './anim_math.js';
 
@@ -67,9 +67,10 @@ export class WindowAnimator {
         // its old target until the client commits the new geometry.
         this.#stop(meta, false);
 
-        const pending: Pending = { from, target: { ...target }, timeout: 0, signals: [] };
+        const pending: Pending = { from, target: copy_box(target), timeout: 0, signals: [] };
         const check = () => {
             if (frame_reached(meta.get_frame_rect(), pending.target)) this.#start(meta, pending);
+            else if (!this.#opening.has(meta)) this.#hold(meta, pending.from);
         };
         pending.signals.push(meta.connect('size-changed', check), meta.connect('position-changed', check));
         pending.timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WAIT_FOR_COMMIT_MS, () => {
@@ -113,6 +114,7 @@ export class WindowAnimator {
         }
 
         actor.remove_all_transitions();
+        this.#reset(actor);
         actor.set_pivot_point(0.5, 0.5);
         actor.scale_x = OPEN_SCALE;
         actor.scale_y = OPEN_SCALE;
@@ -197,6 +199,21 @@ export class WindowAnimator {
                 }
             },
         });
+    }
+
+    /**
+     * While the client is still catching up (Mutter often applies the new position
+     * a few frames before the new size), keep the window painted at `from`.
+     */
+    #hold(meta: Meta.Window, from: Rectangular): void {
+        const actor: any = meta.get_compositor_private();
+        if (!actor) return;
+        const t = transform_for(from, meta.get_frame_rect(), meta.get_buffer_rect());
+        actor.set_pivot_point(0, 0);
+        actor.translation_x = t.translation_x;
+        actor.translation_y = t.translation_y;
+        actor.scale_x = t.scale_x;
+        actor.scale_y = t.scale_y;
     }
 
     #stop(meta: Meta.Window, reset: boolean = true): void {
