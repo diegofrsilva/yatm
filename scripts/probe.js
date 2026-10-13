@@ -15,8 +15,9 @@ app.connect('activate', () => {
             last = s;
             print(`${now} ${name} ${s}`);
         }
-        const g = Gdk.Display.get_default().get_monitors().get_item(0).get_geometry();
-        const m = `${g.width}x${g.height}`;
+        // The nested session may not have a monitor yet right after startup.
+        const monitor = Gdk.Display.get_default().get_monitors().get_item(0);
+        const m = monitor ? `${monitor.get_geometry().width}x${monitor.get_geometry().height}` : last_monitor;
         if (m !== last_monitor) {
             last_monitor = m;
             print(`${now} monitor ${m}`);
