@@ -5,6 +5,8 @@ import type { Entity } from './ecs.js';
 import type { Ext } from './extension.js';
 import type { Rectangle } from './rectangle.js';
 import type { Stack } from './stack.js';
+import { TAB_HEIGHT } from './stack.js';
+import { stack_window_area } from './stack_rules.js';
 import { ShellWindow } from './window.js';
 
 /** A node is either a fork a window */
@@ -228,11 +230,11 @@ export class Node {
                 break;
             // Stack
             case 3:
-                const size = ext.dpi * 4;
+                const windows = stack_window_area(area, ext.dpi * TAB_HEIGHT);
 
                 this.inner.rect = area.clone();
-                this.inner.rect.y += size * 6;
-                this.inner.rect.height -= size * 6;
+                this.inner.rect.y = windows.y;
+                this.inner.rect.height = windows.height;
 
                 for (const entity of this.inner.entities) {
                     record(entity, parent, this.inner.rect);
