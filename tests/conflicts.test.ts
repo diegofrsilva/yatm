@@ -5,7 +5,7 @@ import { find_conflicts } from '../src/conflicts.js';
 const none = { enabled: [], session: [], disabled: [] };
 
 test('no conflicts when only yatm is enabled', () => {
-    assert.deepEqual(find_conflicts({ ...none, enabled: ['yatm@diego', 'ubuntu-dock@ubuntu.com'] }), []);
+    assert.deepEqual(find_conflicts({ ...none, enabled: ['yatm@diegofrsilva', 'ubuntu-dock@ubuntu.com'] }), []);
 });
 
 test('user-enabled tiler is reported', () => {

@@ -2,7 +2,7 @@
     "name": "yatm",
     "description": "Yet Another Tiling Manager: dynamic tiling for GNOME (fork of Pop Shell)",
     "version": 1,
-    "uuid": "yatm@diego",
+    "uuid": "yatm@diegofrsilva",
     "settings-schema": "org.gnome.shell.extensions.yatm",
     "shell-version": [
         "50"

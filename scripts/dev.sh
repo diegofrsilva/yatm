@@ -19,7 +19,7 @@ echo "Logging to $LOG"
 
 exec dbus-run-session -- sh -c '
     gsettings set org.gnome.shell disable-user-extensions false
-    gsettings set org.gnome.shell enabled-extensions "[\"yatm@diego\"]"
+    gsettings set org.gnome.shell enabled-extensions "[\"yatm@diegofrsilva\"]"
     dconf write /org/gnome/shell/extensions/yatm/log-level "uint32 4"
     dconf write /org/gnome/shell/extensions/yatm/tile-by-default true
     exec gnome-shell --devkit

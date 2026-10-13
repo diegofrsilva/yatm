@@ -49,10 +49,10 @@ depcheck:
 	fi
 
 enable:
-	gnome-extensions enable "yatm@diego"
+	gnome-extensions enable "yatm@diegofrsilva"
 
 disable:
-	gnome-extensions disable "yatm@diego"
+	gnome-extensions disable "yatm@diegofrsilva"
 
 listen:
 	journalctl -o cat -n 0 -f "$$(which gnome-shell)" | grep -v warning

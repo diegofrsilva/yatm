@@ -29,7 +29,7 @@ function getExtensionPath(uuid: string) {
 }
 
 function getSettings(schema: string) {
-    let extensionPath = getExtensionPath('yatm@diego');
+    let extensionPath = getExtensionPath('yatm@diegofrsilva');
     if (!extensionPath) throw new Error('getSettings() can only be called when extension is available');
 
     // The following will load a custom path for a user defined gsettings/schemas folder

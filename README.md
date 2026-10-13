@@ -57,7 +57,7 @@ This fork adds stability fixes, GNOME 50 support and a more polished, animated l
   animations and inactive windows.
 
 ### Renaming
-- The extension is renamed to `yatm@diego`, with its own settings schema
+- The extension is renamed to `yatm@diegofrsilva`, with its own settings schema
   (`org.gnome.shell.extensions.yatm`) and config directory (`~/.config/yatm`), so it doesn't clash
   with an installed Pop Shell. Don't enable both at once.
 
@@ -68,7 +68,7 @@ Requires GNU Make and the TypeScript compiler `tsc` on your `PATH` (for example
 
 ```sh
 make compile install
-gnome-extensions enable yatm@diego
+gnome-extensions enable yatm@diegofrsilva
 ```
 
 On Wayland, log out and back in for the shell to load the new version. `make uninstall` removes it.
