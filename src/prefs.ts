@@ -40,6 +40,28 @@ export default class YatmPreferences extends ExtensionPreferences {
     }
 }
 
+/** "Use accent color" switch plus a custom color picker; '' is stored for the accent color. */
+function add_color_rows(group: any, custom: string, resolved: string, set: (color: string) => void) {
+    const accent = new Adw.SwitchRow({ title: 'Use accent color' });
+    accent.set_active(custom === '');
+    const color_row = new Adw.ActionRow({ title: 'Custom color' });
+    const color_button = new Gtk.ColorDialogButton({ dialog: new Gtk.ColorDialog(), valign: Gtk.Align.CENTER });
+    const rgba = new Gdk.RGBA();
+    rgba.parse(resolved);
+    color_button.set_rgba(rgba);
+    color_row.add_suffix(color_button);
+    color_row.set_sensitive(!accent.get_active());
+    accent.connect('notify::active', () => {
+        color_row.set_sensitive(!accent.get_active());
+        set(accent.get_active() ? '' : color_button.get_rgba().to_string());
+    });
+    color_button.connect('notify::rgba', () => {
+        if (!accent.get_active()) set(color_button.get_rgba().to_string());
+    });
+    group.add(accent);
+    group.add(color_row);
+}
+
 function appearance_page(ext: settings.ExtensionSettings): any {
     const page = new Adw.PreferencesPage({ title: 'Appearance', icon_name: 'applications-graphics-symbolic' });
 
@@ -60,25 +82,15 @@ function appearance_page(ext: settings.ExtensionSettings): any {
     ext.ext.bind('border-width', width, 'value', Gio.SettingsBindFlags.DEFAULT);
     border.add(width);
 
-    const accent = new Adw.SwitchRow({ title: 'Use accent color' });
-    accent.set_active(ext.hint_color_custom() === '');
-    const color_row = new Adw.ActionRow({ title: 'Custom color' });
-    const color_button = new Gtk.ColorDialogButton({ dialog: new Gtk.ColorDialog(), valign: Gtk.Align.CENTER });
-    const rgba = new Gdk.RGBA();
-    rgba.parse(ext.hint_color_rgba());
-    color_button.set_rgba(rgba);
-    color_row.add_suffix(color_button);
-    color_row.set_sensitive(!accent.get_active());
-    accent.connect('notify::active', () => {
-        color_row.set_sensitive(!accent.get_active());
-        ext.set_hint_color_rgba(accent.get_active() ? '' : color_button.get_rgba().to_string());
-    });
-    color_button.connect('notify::rgba', () => {
-        if (!accent.get_active()) ext.set_hint_color_rgba(color_button.get_rgba().to_string());
-    });
-    border.add(accent);
-    border.add(color_row);
+    add_color_rows(border, ext.hint_color_custom(), ext.hint_color_rgba(), (c) => ext.set_hint_color_rgba(c));
     page.add(border);
+
+    const stack = new Adw.PreferencesGroup({
+        title: 'Stack bar',
+        description: 'The active tab uses this color; other tabs a darker shade of it',
+    });
+    add_color_rows(stack, ext.stack_color_custom(), ext.stack_color_rgba(), (c) => ext.set_stack_color_rgba(c));
+    page.add(stack);
 
     const corners = new Adw.PreferencesGroup({ title: 'Corners' });
     const rounded = new Adw.SwitchRow({ title: 'Rounded corners on tiled windows' });

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fit_border_width, border_radius_for, resolve_border_color, ACCENT_COLORS, css_color_rgba } from '../src/appearance.js';
+import { fit_border_width, border_radius_for, resolve_border_color, ACCENT_COLORS, css_color_rgba, muted_color, contrast_text } from '../src/appearance.js';
 
 test('border fits inside half the inner gap', () => {
     assert.equal(fit_border_width(2, 8), 2);
@@ -50,4 +50,18 @@ test('css_color_rgba rejects anything else', () => {
     assert.equal(css_color_rgba('blue'), null);
     assert.equal(css_color_rgba('#12'), null);
     assert.equal(css_color_rgba(''), null);
+});
+
+test('muted_color is the color mixed half-way with dark grey (#303030), alpha kept', () => {
+    assert.equal(muted_color('#3584e4'), 'rgba(51, 90, 138, 1)');
+    assert.equal(muted_color('rgba(255, 255, 255, 0.5)'), 'rgba(152, 152, 152, 0.5)');
+    assert.equal(muted_color('nonsense'), null);
+});
+
+test('contrast_text picks white on dark colors and black on light ones', () => {
+    assert.equal(contrast_text('#3584e4'), 'white');
+    assert.equal(contrast_text('rgba(51, 90, 138, 1)'), 'white');
+    assert.equal(contrast_text('#c88800'), 'black');
+    assert.equal(contrast_text('#ffffff'), 'black');
+    assert.equal(contrast_text('nonsense'), 'black');
 });

@@ -322,6 +322,10 @@
             <default>''</default>
             <summary>The current active-hint-color in RGBA</summary>
         </key>
+        <key type="s" name="stack-color-rgba">
+            <default>''</default>
+            <summary>Stack tab bar color; empty follows the GNOME accent color</summary>
+        </key>
         <key type="u" name="log-level">
             <default>2</default>
             <summary>

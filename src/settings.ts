@@ -67,6 +67,7 @@ const SMART_GAPS = 'smart-gaps';
 const SNAP_TO_GRID = 'snap-to-grid';
 const TILE_BY_DEFAULT = 'tile-by-default';
 const HINT_COLOR_RGBA = 'hint-color-rgba';
+const STACK_COLOR_RGBA = 'stack-color-rgba';
 const LOG_LEVEL = 'log-level';
 const SHOW_SKIPTASKBAR = 'show-skip-taskbar';
 const MOUSE_CURSOR_FOLLOWS_ACTIVE_WINDOW = 'mouse-cursor-follows-active-window';
@@ -118,6 +119,16 @@ export class ExtensionSettings {
 
     hint_color_rgba(): string {
         return resolve_border_color(this.hint_color_custom(), this.accent_color());
+    }
+
+    /** Raw custom stack bar color; '' when unset or invalid (then the accent color is used). */
+    stack_color_custom(): string {
+        const rgba = this.ext.get_string(STACK_COLOR_RGBA);
+        return rgba !== '' && new Gdk.RGBA().parse(rgba) ? rgba : '';
+    }
+
+    stack_color_rgba(): string {
+        return resolve_border_color(this.stack_color_custom(), this.accent_color());
     }
 
     accent_color(): string {
@@ -272,6 +283,12 @@ export class ExtensionSettings {
     set_hint_color_rgba(rgba: string) {
         const valid_color = rgba !== '' && new Gdk.RGBA().parse(rgba);
         this.ext.set_string(HINT_COLOR_RGBA, valid_color ? rgba : '');
+    }
+
+    /** An empty or invalid color stores '' (follow the accent color). */
+    set_stack_color_rgba(rgba: string) {
+        const valid_color = rgba !== '' && new Gdk.RGBA().parse(rgba);
+        this.ext.set_string(STACK_COLOR_RGBA, valid_color ? rgba : '');
     }
 
     set_row_size(size: number) {

@@ -1040,6 +1040,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         actor.connect('destroy', () => this.corner_size_signals.delete(actor));
     }
 
+    refresh_stacks() {
+        if (!this.auto_tiler) return;
+        for (const stack of this.auto_tiler.forest.stacks.values()) guard('stack style', () => stack.refresh_style(), log.report)();
+    }
+
     update_all_corners() {
         for (const win of this.windows.values()) this.update_corners(win);
     }
@@ -2022,6 +2027,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 for (const win of this.windows.values()) win.update_border_style();
                 this.show_border_on_focused();
                 this.update_all_corners();
+                this.refresh_stacks();
             });
         }
 
@@ -2041,12 +2047,14 @@ export class Ext extends Ecs.System<ExtEvent> {
                 case 'corner-radius':
                 case 'rounded-corners':
                     this.update_all_corners();
+                    this.refresh_stacks();
                     this.show_border_on_focused();
                     break;
-                case 'hint-color-rgba':
-                    this.update_all_corners();
-                // fallthrough
+                case 'stack-color-rgba':
+                    this.refresh_stacks();
+                    break;
                 case 'border-width':
+                case 'hint-color-rgba':
                     this.show_border_on_focused();
                     break;
                 case 'gap-inner':

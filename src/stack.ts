@@ -4,8 +4,8 @@ import type { ShellWindow } from './window.js';
 
 import * as Ecs from './ecs.js';
 import * as a from './arena.js';
-import * as utils from './utils.js';
 import { stack_tab_radius } from './corners.js';
+import { contrast_text, muted_color } from './appearance.js';
 
 const Arena = a.Arena;
 import Clutter from 'gi://Clutter';
@@ -15,7 +15,8 @@ import St from 'gi://St';
 const ACTIVE_TAB = 'pop-shell-tab pop-shell-tab-active';
 const INACTIVE_TAB = 'pop-shell-tab pop-shell-tab-inactive';
 const URGENT_TAB = 'pop-shell-tab pop-shell-tab-urgent';
-const INACTIVE_TAB_STYLE = '#9B8E8A';
+/** Inactive tabs and bar, if the stack color cannot be parsed. */
+const FALLBACK_INACTIVE_COLOR = '#9B8E8A';
 
 export var TAB_HEIGHT: number = 32;
 
@@ -32,6 +33,7 @@ interface StackWidgets {
     tabs: St.Widget;
     /** The tab buttons, sharing the bar's width equally. */
     tab_box: St.Widget;
+    unstack: St.Widget;
 }
 
 function stack_widgets_new(on_unstack: () => void): StackWidgets {
@@ -45,7 +47,6 @@ function stack_widgets_new(on_unstack: () => void): StackWidgets {
 
     const unstack = new St.Button({
         child: new St.Icon({ icon_name: 'view-grid-symbolic', icon_size: 16 }),
-        style: 'padding: 0 10px; color: black;',
         y_expand: true,
         can_focus: false,
         accessible_name: 'Unstack all windows',
@@ -55,7 +56,7 @@ function stack_widgets_new(on_unstack: () => void): StackWidgets {
     tabs.add_child(tab_box);
     tabs.add_child(unstack);
 
-    return { tabs, tab_box };
+    return { tabs, tab_box, unstack };
 }
 
 const ContainerButton = GObject.registerClass(
@@ -263,17 +264,7 @@ export class Stack {
                 let button = this.buttons.get(component.button);
                 if (button) {
                     button.set_style_class_name(name);
-                    let tab_color = '';
-                    if (component.active) {
-                        let settings = this.ext.settings;
-                        let color_value = settings.hint_color_rgba();
-                        tab_color = `${color_value}; color: ${utils.is_dark(color_value) ? 'white' : 'black'}`;
-                    } else {
-                        tab_color = `${INACTIVE_TAB_STYLE}`;
-                    }
-
-                    const tab_border_radius = this.get_tab_border_radius(idx);
-                    button.set_style(`background: ${tab_color}; border-radius: ${tab_border_radius};`);
+                    button.set_style(this.tab_style(idx, component.active));
                 }
             });
 
@@ -296,14 +287,47 @@ export class Stack {
         return settings.rounded_corners() ? Math.min(settings.corner_radius(), Math.trunc(this.tabs_height / 2)) : 0;
     }
 
+    /** The active tab uses the stack color; other tabs and the bar a darker shade of it. */
+    private colors(): { active: string; inactive: string } {
+        const active = this.ext.settings.stack_color_rgba();
+        return { active, inactive: muted_color(active) ?? FALLBACK_INACTIVE_COLOR };
+    }
+
+    private tab_style(idx: number, active: boolean): string {
+        const colors = this.colors();
+        const background = active ? colors.active : colors.inactive;
+        return `background: ${background}; color: ${contrast_text(background)}; border-radius: ${this.get_tab_border_radius(idx)};`;
+    }
+
+    /** The bar's background shows behind the unstack button; its rounded top
+     *  continues the window's rounded bottom (the window is square on top). */
+    private style_bar() {
+        if (!this.widgets) return;
+        const radius = this.bar_radius();
+        const inactive = this.colors().inactive;
+        this.widgets.tabs.set_style(`background: ${inactive}; border-radius: ${radius}px ${radius}px 0px 0px;`);
+        this.widgets.unstack.set_style(`padding: 0 10px; color: ${contrast_text(inactive)};`);
+    }
+
+    /** Re-applies colors and radii after a settings change. */
+    refresh_style() {
+        for (const [idx, tab] of this.tabs.entries()) {
+            this.buttons.get(tab.button)?.set_style(this.tab_style(idx, Ecs.entity_eq(tab.entity, this.active)));
+        }
+        this.style_bar();
+        const win = this.ext.windows.get(this.active);
+        if (win) this.ext.update_corners(win);
+    }
+
     /**
      * Colors of the bar right above the visible window's top-left and top-right
      * corners: the first tab, and the bar behind the unstack button.
      */
     corner_fill_colors(): [string, string] {
+        const colors = this.colors();
         const first = this.tabs[0];
-        const left = first && Ecs.entity_eq(first.entity, this.active) ? this.ext.settings.hint_color_rgba() : INACTIVE_TAB_STYLE;
-        return [left, INACTIVE_TAB_STYLE];
+        const left = first && Ecs.entity_eq(first.entity, this.active) ? colors.active : colors.inactive;
+        return [left, colors.inactive];
     }
 
     /** Unstacks every window; the button lives in the bar, so defer past the click. */
@@ -374,18 +398,8 @@ export class Stack {
     }
 
     private change_tab_color(tab: Tab) {
-        let settings = this.ext.settings;
-        let button = this.buttons.get(tab.button);
-        if (button) {
-            let tab_color = '';
-            if (Ecs.entity_eq(tab.entity, this.active)) {
-                let color_value = settings.hint_color_rgba();
-                tab_color = `background: ${color_value}; color: ${utils.is_dark(color_value) ? 'white' : 'black'}`;
-            } else {
-                tab_color = `background: ${INACTIVE_TAB_STYLE}`;
-            }
-            button.set_style(tab_color);
-        }
+        const idx = this.tabs.indexOf(tab);
+        this.buttons.get(tab.button)?.set_style(this.tab_style(Math.max(0, idx), Ecs.entity_eq(tab.entity, this.active)));
     }
 
     /** Clears watched tabs and removes all tabs */
@@ -677,10 +691,7 @@ export class Stack {
         this.widgets.tabs.height = this.tabs_height;
         this.widgets.tabs.width = rect.width;
 
-        // The bar's background shows behind the unstack button; its rounded top
-        // continues the window's rounded bottom (the window is square on top).
-        const radius = this.bar_radius();
-        this.widgets.tabs.set_style(`background: ${INACTIVE_TAB_STYLE}; border-radius: ${radius}px ${radius}px 0px 0px;`);
+        this.style_bar();
     }
 
     private watch_signals(comp: number, button: number, window: ShellWindow) {

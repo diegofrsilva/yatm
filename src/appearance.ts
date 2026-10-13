@@ -48,3 +48,19 @@ export function css_color_rgba(color: string): [number, number, number, number] 
 
     return null;
 }
+
+/** The color mixed half-way with dark grey (#303030): inactive stack tabs and the bar. */
+export function muted_color(color: string): string | null {
+    const rgba = css_color_rgba(color);
+    if (!rgba) return null;
+    const [r, g, b] = rgba.slice(0, 3).map((c) => Math.round((c * 255 + 0x30) / 2));
+    return `rgba(${r}, ${g}, ${b}, ${rgba[3]})`;
+}
+
+/** Readable text color on a `color` background. */
+export function contrast_text(color: string): 'white' | 'black' {
+    const rgba = css_color_rgba(color);
+    if (!rgba) return 'black';
+    const luma = (0.299 * rgba[0] + 0.587 * rgba[1] + 0.114 * rgba[2]) * 255;
+    return luma < 128 ? 'white' : 'black';
+}
