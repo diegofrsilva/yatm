@@ -26,3 +26,25 @@ export function resolve_border_color(custom: string, accent: string): string {
     if (custom.trim() !== '') return custom;
     return ACCENT_COLORS[accent] ?? ACCENT_COLORS.blue;
 }
+
+/** '#rgb', '#rrggbb', 'rgb(r,g,b)' or 'rgba(r,g,b,a)' as [r, g, b, a] in 0..1; null otherwise. */
+export function css_color_rgba(color: string): [number, number, number, number] | null {
+    const s = color.trim().toLowerCase();
+
+    const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(s);
+    if (hex) {
+        const h = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join('') : hex[1];
+        return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).concat(1) as [number, number, number, number];
+    }
+
+    const fn = /^rgba?\(([^)]*)\)$/.exec(s);
+    if (fn) {
+        const parts = fn[1].split(',').map((p) => Number(p.trim()));
+        if ((parts.length === 3 || parts.length === 4) && parts.every((n) => Number.isFinite(n))) {
+            const [r, g, b, a = 1] = parts;
+            return [r / 255, g / 255, b / 255, a];
+        }
+    }
+
+    return null;
+}

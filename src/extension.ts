@@ -22,6 +22,7 @@ import { guard, run_steps } from './guard.js';
 import { find_conflicts } from './conflicts.js';
 import { restart_tiler_steps } from './panic.js';
 import { window_corner_radius } from './corners.js';
+import { css_color_rgba } from './appearance.js';
 import { set_rounded_corners } from './rounded_corners.js';
 import { WindowAnimator } from './animator.js';
 import { Dimmer } from './dimmer.js';
@@ -1015,9 +1016,19 @@ export class Ext extends Ecs.System<ExtEvent> {
             maximized: win.is_maximized(),
             fullscreen: win.meta.is_fullscreen(),
             destroying: win.destroying,
+            stacked: win.stack !== null,
         });
         if (radius === null) return;
-        guard('rounded corners', () => set_rounded_corners(win.meta, radius), log.report)();
+
+        // A stacked window sits under the tab bar: fill its app-drawn top corners
+        // with the bar's colors right above them.
+        let fill = null;
+        const stack = win.stack !== null ? this.auto_tiler?.forest.stacks.get(win.stack) : null;
+        if (stack && radius.top === 0 && radius.bottom > 0) {
+            const [left, right] = stack.corner_fill_colors().map(css_color_rgba);
+            if (left && right) fill = { left, right, size: this.settings.corner_radius() };
+        }
+        guard('rounded corners', () => set_rounded_corners(win.meta, radius, fill), log.report)();
     }
 
     /** The actor size also changes when only the client's shadow (buffer) changes. */
@@ -2010,6 +2021,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.connect(this.settings.int, 'changed::accent-color', () => {
                 for (const win of this.windows.values()) win.update_border_style();
                 this.show_border_on_focused();
+                this.update_all_corners();
             });
         }
 
@@ -2031,8 +2043,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                     this.update_all_corners();
                     this.show_border_on_focused();
                     break;
-                case 'border-width':
                 case 'hint-color-rgba':
+                    this.update_all_corners();
+                // fallthrough
+                case 'border-width':
                     this.show_border_on_focused();
                     break;
                 case 'gap-inner':
@@ -2922,14 +2936,16 @@ export default class YatmExtension extends Extension {
 
             ext.animator.cancel_all();
             ext.dimmer.clear_all();
-            for (const win of ext.windows.values()) guard('remove corners', () => set_rounded_corners(win.meta, 0), log.report)();
-            for (const [actor, id] of ext.corner_size_signals) actor.disconnect(id);
-            ext.corner_size_signals.clear();
 
+            // Tear the tiler down first: leaving stacks updates window corners.
             if (ext.auto_tiler) {
                 ext.auto_tiler.destroy(ext);
                 ext.auto_tiler = null;
             }
+
+            for (const win of ext.windows.values()) guard('remove corners', () => set_rounded_corners(win.meta, { top: 0, bottom: 0 }), log.report)();
+            for (const [actor, id] of ext.corner_size_signals) actor.disconnect(id);
+            ext.corner_size_signals.clear();
 
             _hide_skip_taskbar_windows();
         }

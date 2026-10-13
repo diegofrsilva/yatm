@@ -57,12 +57,23 @@ export class ShellWindow {
     entity: Entity;
     meta: Meta.Window;
     ext: Ext;
-    stack: number | null = null;
+    #stack: number | null = null;
     known_workspace: number;
     grab: boolean = false;
     activate_after_move: boolean = false;
     ignore_detach: boolean = false;
     was_attached_to?: [Entity, boolean | number];
+
+    /** Index of the stack this window is in. Joining or leaving one changes its corners. */
+    get stack(): number | null {
+        return this.#stack;
+    }
+
+    set stack(stack: number | null) {
+        const changed = (stack === null) !== (this.#stack === null);
+        this.#stack = stack;
+        if (changed) this.ext.update_corners(this);
+    }
     destroying: boolean = false;
 
     // Awaiting reassignment after a display update

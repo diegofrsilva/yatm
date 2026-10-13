@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fit_border_width, border_radius_for, resolve_border_color, ACCENT_COLORS } from '../src/appearance.js';
+import { fit_border_width, border_radius_for, resolve_border_color, ACCENT_COLORS, css_color_rgba } from '../src/appearance.js';
 
 test('border fits inside half the inner gap', () => {
     assert.equal(fit_border_width(2, 8), 2);
@@ -34,4 +34,20 @@ test('empty custom color follows the accent', () => {
 
 test('unknown accent falls back to blue', () => {
     assert.equal(resolve_border_color('', 'chartreuse'), ACCENT_COLORS.blue);
+});
+
+test('css_color_rgba parses hex colors to 0..1 components', () => {
+    assert.deepEqual(css_color_rgba('#3584e4'), [0x35 / 255, 0x84 / 255, 0xe4 / 255, 1]);
+    assert.deepEqual(css_color_rgba('#fff'), [1, 1, 1, 1]);
+});
+
+test('css_color_rgba parses rgb() and rgba() (Gdk.RGBA.to_string output)', () => {
+    assert.deepEqual(css_color_rgba('rgb(255,0,0)'), [1, 0, 0, 1]);
+    assert.deepEqual(css_color_rgba('rgba(251, 184, 108, 0.5)'), [251 / 255, 184 / 255, 108 / 255, 0.5]);
+});
+
+test('css_color_rgba rejects anything else', () => {
+    assert.equal(css_color_rgba('blue'), null);
+    assert.equal(css_color_rgba('#12'), null);
+    assert.equal(css_color_rgba(''), null);
 });

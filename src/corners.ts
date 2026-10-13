@@ -22,10 +22,16 @@ export function corner_bounds(frame: Box, buffer: Box): CornerBounds {
     return { x1, y1, x2: x1 + frame.width, y2: y1 + frame.height };
 }
 
+export interface CornerRadii {
+    top: number;
+    bottom: number;
+}
+
 /**
- * Corner radius a window should have: the configured radius only for tiled,
+ * Corner radii a window should have: the configured radius only for tiled,
  * non-maximized, non-fullscreen windows (square windows skip the offscreen
- * effect entirely). null = leave the window alone (it is closing).
+ * effect entirely). Stacked windows are square at the top, where they meet the
+ * tab bar. null = leave the window alone (it is closing).
  */
 export function window_corner_radius(w: {
     tiled: boolean;
@@ -34,8 +40,18 @@ export function window_corner_radius(w: {
     maximized: boolean;
     fullscreen: boolean;
     destroying: boolean;
-}): number | null {
+    stacked: boolean;
+}): CornerRadii | null {
     if (w.destroying) return null;
-    if (!w.tiled || !w.enabled || w.maximized || w.fullscreen) return 0;
-    return w.radius;
+    if (!w.tiled || !w.enabled || w.maximized || w.fullscreen) return { top: 0, bottom: 0 };
+    return { top: w.stacked ? 0 : w.radius, bottom: w.radius };
+}
+
+/**
+ * CSS border-radius of a stack tab. The tab bar itself rounds its top corners;
+ * only the first tab paints over the top-left one, so only it needs rounding.
+ */
+export function stack_tab_radius(idx: number, _count: number, radius: number, tab_height: number = Infinity): string {
+    const r = Math.max(0, Math.min(radius, Math.trunc(tab_height / 2)));
+    return idx === 0 ? `${r}px 0px 0px 0px` : '0px';
 }

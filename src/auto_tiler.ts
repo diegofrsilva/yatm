@@ -600,6 +600,43 @@ export class AutoTiler {
         this.tile(ext, fork, fork.area);
     }
 
+    /**
+     * Turns every window of a stack back into its own tile, in the stack's place:
+     * the active window keeps the spot and focus, the others split it in tab order.
+     */
+    unstack_all(ext: Ext, s: stack.Stack) {
+        const keep = ext.windows.get(s.active);
+        if (!keep) return;
+
+        const found = this.find_stack(keep.entity);
+        if (!found) return;
+
+        const others: ShellWindow[] = [];
+        for (const entity of (found[1].inner as node.NodeStack).entities) {
+            if (ecs.entity_eq(entity, keep.entity)) continue;
+            const win = ext.windows.get(entity);
+            if (win) others.push(win);
+        }
+
+        for (const win of others) {
+            // Re-tiled right below: don't send it back to its pre-tiling place.
+            win.ignore_detach = true;
+            this.detach_window(ext, win.entity);
+        }
+
+        // Only the kept window is left: turn its stack back into a plain tile.
+        const fork = this.get_parent_fork(keep.entity);
+        if (fork) this.unstack(ext, fork, keep);
+
+        let anchor = keep;
+        for (const win of others) {
+            if (this.attach_to_window(ext, anchor, win, { auto: 0 })) anchor = win;
+            else this.auto_tile(ext, win, true);
+        }
+
+        keep.activate(false);
+    }
+
     stack_left(ext: Ext, fork: Fork, window: ShellWindow) {
         window.stack = this.forest.stacks.insert(new Stack(ext, window.entity, fork.workspace, fork.monitor));
         fork.left = node.Node.stacked(window.entity, window.stack);

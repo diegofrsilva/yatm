@@ -5,6 +5,7 @@ import type { ShellWindow } from './window.js';
 import * as Ecs from './ecs.js';
 import * as a from './arena.js';
 import * as utils from './utils.js';
+import { stack_tab_radius } from './corners.js';
 
 const Arena = a.Arena;
 import Clutter from 'gi://Clutter';
@@ -16,7 +17,7 @@ const INACTIVE_TAB = 'pop-shell-tab pop-shell-tab-inactive';
 const URGENT_TAB = 'pop-shell-tab pop-shell-tab-urgent';
 const INACTIVE_TAB_STYLE = '#9B8E8A';
 
-export var TAB_HEIGHT: number = 24;
+export var TAB_HEIGHT: number = 32;
 
 interface Tab {
     active: boolean;
@@ -27,18 +28,34 @@ interface Tab {
 }
 
 interface StackWidgets {
+    /** The whole tab bar: the tabs plus the unstack button. */
     tabs: St.Widget;
+    /** The tab buttons, sharing the bar's width equally. */
+    tab_box: St.Widget;
 }
 
-function stack_widgets_new(): StackWidgets {
+function stack_widgets_new(on_unstack: () => void): StackWidgets {
     let tabs = new St.BoxLayout({
         style_class: 'pop-shell-stack',
         x_expand: true,
     });
 
-    tabs.get_layout_manager()?.set_homogeneous(true);
+    let tab_box = new St.BoxLayout({ x_expand: true, y_expand: true });
+    tab_box.get_layout_manager()?.set_homogeneous(true);
 
-    return { tabs };
+    const unstack = new St.Button({
+        child: new St.Icon({ icon_name: 'view-grid-symbolic', icon_size: 16 }),
+        style: 'padding: 0 10px; color: black;',
+        y_expand: true,
+        can_focus: false,
+        accessible_name: 'Unstack all windows',
+    });
+    unstack.connect('clicked', on_unstack);
+
+    tabs.add_child(tab_box);
+    tabs.add_child(unstack);
+
+    return { tabs, tab_box };
 }
 
 const ContainerButton = GObject.registerClass(
@@ -106,7 +123,7 @@ const TabButton = GObject.registerClass(
                 child: container,
                 x_expand: true,
                 y_expand: true,
-                y_align: Clutter.ActorAlign.CENTER,
+                y_align: Clutter.ActorAlign.FILL,
             });
 
             this._title = label;
@@ -159,7 +176,7 @@ export class Stack {
         this.workspace = workspace;
         this.tabs_height = TAB_HEIGHT * this.ext.dpi;
 
-        this.widgets = stack_widgets_new();
+        this.widgets = stack_widgets_new(() => this.unstack_all());
 
         global.window_group.add_child(this.widgets.tabs);
 
@@ -183,7 +200,7 @@ export class Stack {
         this.bind_hint_events(tab);
         this.tabs.push(tab);
         this.watch_signals(comp, id, window);
-        this.widgets.tabs.add_child(button);
+        this.widgets.tab_box.add_child(button);
     }
 
     /** Activates a tab based on the previously active entry */
@@ -264,23 +281,34 @@ export class Stack {
         }
 
         this.reset_visibility(permitted);
+
+        // The window's top-left corner fill follows the first tab's color.
+        this.ext.update_corners(win);
     }
 
-    // returns the tab button border radius based on it's order.
-    // Only curving the corners on the edges.
-    private get_tab_border_radius(idx: Number): string {
-        let result = `0px 0px 0px 0px`;
+    private get_tab_border_radius(idx: number): string {
+        return stack_tab_radius(idx, this.tabs.length, this.bar_radius(), this.tabs_height);
+    }
 
-        // the minus 4px is to accomodate the inner radius being tighter
-        let radius = Math.max(0, this.ext.settings.corner_radius() - 4);
-        // only allow a radius up to half the tab_height
-        radius = Math.min(radius, Math.trunc(this.tabs_height / 2));
-        // set each corner's radius based on it's order
-        if (this.tabs.length === 1) result = `${radius}px`;
-        else if (idx === 0) result = `${radius}px 0px 0px ${radius}px`;
-        else if (idx === this.tabs.length - 1) result = `0px ${radius}px ${radius}px 0px`;
+    /** Radius of the bar's top corners: the window corner radius, if rounded corners are on. */
+    private bar_radius(): number {
+        const settings = this.ext.settings;
+        return settings.rounded_corners() ? Math.min(settings.corner_radius(), Math.trunc(this.tabs_height / 2)) : 0;
+    }
 
-        return result;
+    /**
+     * Colors of the bar right above the visible window's top-left and top-right
+     * corners: the first tab, and the bar behind the unstack button.
+     */
+    corner_fill_colors(): [string, string] {
+        const first = this.tabs[0];
+        const left = first && Ecs.entity_eq(first.entity, this.active) ? this.ext.settings.hint_color_rgba() : INACTIVE_TAB_STYLE;
+        return [left, INACTIVE_TAB_STYLE];
+    }
+
+    /** Unstacks every window; the button lives in the bar, so defer past the click. */
+    private unstack_all() {
+        this.ext.register_fn(() => this.ext.auto_tiler?.unstack_all(this.ext, this));
     }
 
     /** Connects `on_window_changed` callbacks to the newly-active window */
@@ -364,7 +392,7 @@ export class Stack {
     clear() {
         this.active_disconnect();
         for (const c of this.tabs.splice(0)) this.tab_disconnect(c);
-        this.widgets?.tabs.destroy_all_children();
+        this.widgets?.tab_box.destroy_all_children();
         this.buttons.truncate(0);
     }
 
@@ -452,7 +480,7 @@ export class Stack {
     recreate_widgets() {
         if (this.widgets !== null) {
             this.widgets.tabs.disconnect(this.tabs_destroy);
-            this.widgets = stack_widgets_new();
+            this.widgets = stack_widgets_new(() => this.unstack_all());
 
             global.window_group.add_child(this.widgets.tabs);
 
@@ -488,7 +516,7 @@ export class Stack {
 
         const b = this.buttons.get(c.button);
         if (b) {
-            this.widgets.tabs.remove_child(b);
+            this.widgets.tab_box.remove_child(b);
             b.destroy();
             this.buttons.remove(c.button);
         }
@@ -648,6 +676,11 @@ export class Stack {
         this.widgets.tabs.y = this.stack_rect.y;
         this.widgets.tabs.height = this.tabs_height;
         this.widgets.tabs.width = rect.width;
+
+        // The bar's background shows behind the unstack button; its rounded top
+        // continues the window's rounded bottom (the window is square on top).
+        const radius = this.bar_radius();
+        this.widgets.tabs.set_style(`background: ${INACTIVE_TAB_STYLE}; border-radius: ${radius}px ${radius}px 0px 0px;`);
     }
 
     private watch_signals(comp: number, button: number, window: ShellWindow) {
