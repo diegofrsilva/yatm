@@ -1,6 +1,6 @@
 # yatm
 
-**Yet Another Tile Manager, a fork from [Pop Shell](https://github.com/pop-os/shell).**
+**Yet Another Tiling Manager, a fork from [Pop Shell](https://github.com/pop-os/shell).**
 
 Hyprland/yabai-style dynamic tiling for GNOME Shell.
 
