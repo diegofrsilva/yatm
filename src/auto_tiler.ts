@@ -19,6 +19,7 @@ const { Stack } = stack;
 const { Ok, Err, ERR } = result;
 const { NodeKind } = node;
 import * as Tags from './tags.js';
+import { dissolves } from './stack_rules.js';
 
 export class AutoTiler {
     forest: Forest;
@@ -491,6 +492,57 @@ export class AutoTiler {
 
     tile(ext: Ext, fork: Fork, area: Rectangle) {
         this.forest.tile(ext, fork, area);
+        this.queue_dissolve(ext);
+    }
+
+    #dissolve_queued = false;
+
+    /**
+     * Windows leave stacks through many paths (close, drag, keyboard moves) and
+     * all of them end in tile(). Some keep using the stack's node after tiling,
+     * so lone stacks are dissolved on the next tick, once the change is done.
+     */
+    private queue_dissolve(ext: Ext) {
+        if (this.#dissolve_queued) return;
+        this.#dissolve_queued = true;
+        ext.register_fn(() => {
+            this.#dissolve_queued = false;
+            if (ext.auto_tiler !== this) return;
+            for (const fork of this.dissolve_lone_stacks(ext)) this.forest.tile(ext, fork, fork.area);
+        });
+    }
+
+    /** Turns stacks that are down to their last window back into plain tiles. Returns the changed forks. */
+    private dissolve_lone_stacks(ext: Ext): Fork[] {
+        const changed: Fork[] = [];
+
+        const lone = (branch: node.Node | null): Entity | null => {
+            if (!branch || branch.inner.kind !== 3) return null;
+            const inner = branch.inner as node.NodeStack;
+            const s = this.forest.stacks.get(inner.idx);
+            return s && dissolves(inner.entities.length, s.held_several) ? inner.entities[0] : null;
+        };
+
+        const dissolve = (inner: node.NodeStack, entity: Entity): node.Node => {
+            this.forest.stacks.remove(inner.idx)?.destroy();
+            ext.windows.with(entity, (w) => (w.stack = null));
+            return node.Node.window(entity);
+        };
+
+        for (const fork of this.forest.forks.values()) {
+            const left = lone(fork.left);
+            if (left) fork.left = dissolve(fork.left.inner as node.NodeStack, left);
+
+            const right = lone(fork.right);
+            if (right && fork.right) fork.right = dissolve(fork.right.inner as node.NodeStack, right);
+
+            if (left || right) {
+                fork.measure(this.forest, ext, fork.area, this.forest.on_record());
+                changed.push(fork);
+            }
+        }
+
+        return changed;
     }
 
     toggle_floating(ext: Ext) {

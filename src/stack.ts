@@ -152,6 +152,9 @@ export class Stack {
 
     tabs: Array<Tab> = new Array();
 
+    /** Has held two or more windows at some point (see stack_rules.dissolves). */
+    held_several: boolean = false;
+
     monitor: number;
 
     workspace: number;
@@ -200,6 +203,7 @@ export class Stack {
         let comp = this.tabs.length;
         this.bind_hint_events(tab);
         this.tabs.push(tab);
+        if (this.tabs.length >= 2) this.held_several = true;
         this.watch_signals(comp, id, window);
         this.widgets.tab_box.add_child(button);
     }
