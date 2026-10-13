@@ -1,15 +1,95 @@
 # yatm
 
-Dynamic tiling for GNOME 50 on Ubuntu. A fork of [Pop Shell](https://github.com/pop-os/shell)
-(GPL-3.0) with stability fixes, Hyprland-style gaps and animations.
+**Yet Another Tiling Manager**: Hyprland/yabai-style dynamic tiling for GNOME Shell.
 
-Dev loop: `make dev` (nested session, isolated settings). Tests: `make test`.
+yatm is a fork of [Pop Shell](https://github.com/pop-os/shell) by System76 (GPL-3.0). Most of the
+tiling engine, keyboard shortcuts and the documentation further down come from the original project.
+This fork adds stability fixes, GNOME 50 support and a more polished, animated look.
+
+> **Tested only on Ubuntu 26.04 LTS with GNOME Shell 50.1 (Wayland).** Other distributions,
+> GNOME versions or X11 sessions may work, but they have not been tried. The extension metadata
+> only declares support for GNOME 50.
+
+## Customisations in this fork
+
+### Stability
+- The event queue survives handler errors (the root cause of shell freezes).
+- Grab handlers and the drag overlay are guarded, so an error always releases the mouse grab.
+- Startup fixes: monitor geometry isn't queried before monitors exist, and floating windows
+  aren't raised before they're mapped.
+- A failing keybinding conflict check can no longer abort enabling the extension.
+- **Panic reset:** `Super` + `Ctrl` + `Esc` tears tiling down and restarts it, even if teardown fails.
+- A warning is shown when another tiling extension is enabled at the same time.
+- Ported to the GNOME 50 / Mutter 18 maximize API.
+
+### Look and feel
+- Smart gaps and the active-window hint are on by default.
+- Focus border with a configurable width, following the system accent colour by default
+  (or a custom colour), with a radius concentric to the window corners.
+- Rounded corners on tiled windows (GLSL effect, 15 px by default to match libadwaita);
+  maximized and fullscreen windows keep square corners.
+- Optional dimming of inactive tiled windows.
+
+### Animations
+- Tiling motion is animated: windows slide and resize from their current visual position,
+  and an interrupted animation continues from where it is.
+- New windows scale and fade in at their tile (replacing GNOME's map effect).
+- Workspace switching uses yatm's duration and easing curve.
+- Duration and curve are configurable.
+
+### Mouse resizing
+- While you drag the edge of a tiled window, the neighbouring tiles resize live instead of
+  overlapping or exposing the desktop.
+
+### Stacks
+- One-piece look: a taller tab bar joined to the windows, which lose their top corner radius.
+- An **unstack all** button on the tab bar turns every window of the stack back into a tile.
+- A stack down to its last window turns back into a plain tile.
+- Tab bar colour setting, following the accent colour by default: the active tab uses the
+  colour and the other tabs a darker shade.
+- The stack layout reserves the real tab bar height, so the bar no longer slides under the top
+  bar.
+
+### Preferences
+- A libadwaita Appearance page in the preferences, with settings for borders, corners, stacks,
+  animations and inactive windows.
+
+### Renaming
+- The extension is renamed to `yatm@diego`, with its own settings schema
+  (`org.gnome.shell.extensions.yatm`) and config directory (`~/.config/yatm`), so it doesn't clash
+  with an installed Pop Shell. Don't enable both at once.
+
+## Install
+
+Requires GNU Make and the TypeScript compiler `tsc` on your `PATH` (for example
+`sudo npm install -g typescript`, or the `node-typescript` package). Node.js is also needed for the tests.
+
+```sh
+make compile install
+gnome-extensions enable yatm@diego
+```
+
+On Wayland, log out and back in for the shell to load the new version. `make uninstall` removes it.
+
+### Known shortcut conflict
+
+On GNOME 50, `Super` + `S` opens Quick Settings, which conflicts with yatm's default "toggle
+stacking" shortcut. Rebind one of them if you use stacks from the keyboard.
+
+## Development
+
+- `make dev` runs a nested GNOME Shell session with isolated settings under `.dev/`.
+- `make test` runs the unit tests for the pure modules.
+
+The sections below are the original Pop Shell documentation. They still describe the tiling
+behaviour and shortcuts, but anything about Pop!_OS, packaging or release branches refers to the
+upstream project, not this fork.
 
 ## Table of Contents
 
 - [The Proposal](#the-proposal): Possible upstreaming into GNOME
 - [The Problem](#the-problem): Why we need this in GNOME
-- [Installation](#installation): For those wanting to install this on their distribution
+- [Pop Shell Installation](#pop-shell-installation): How the upstream project is installed (not yatm)
 - The Solution:
   - [Shared Features](#shared-features): Behaviors shared between stacking and auto-tiling modes
   - [Floating Mode](#floating-mode): Behaviors specific to the floating mode
@@ -55,7 +135,9 @@ There are additionally those who do want the traditional stacking window managem
 
 ---
 
-## Installation
+## Pop Shell Installation
+
+> This section is about upstream Pop Shell. For yatm, see [Install](#install) above.
 
 Use the branch corresponding to your GNOME Shell version (`git checkout branch_name`):
 
@@ -179,7 +261,7 @@ Disabled by default, this mode manages windows using a tree-based tiling window 
   - See [#customizing the window float list](#customizing-the-floating-window-list)
 
 ### Customizing the Floating Window List
-There is file `$XDG_CONFIG_HOME/pop-shell/config.json` where you can add the following structure:
+There is file `$XDG_CONFIG_HOME/yatm/config.json` where you can add the following structure:
 ```
 {
   class: "<WM_CLASS String from xprop>",
