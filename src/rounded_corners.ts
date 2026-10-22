@@ -2,7 +2,7 @@ import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
 import Cogl from 'gi://Cogl';
 
-import { corner_bounds, type CornerBounds, type CornerRadii } from './corners.js';
+import { corner_bounds, type CornerRadii } from './corners.js';
 
 type Rgba = [number, number, number, number];
 
@@ -70,15 +70,41 @@ const RoundedCornersEffect = GObject.registerClass(
             this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT, DECLARATIONS, CODE, false);
         }
 
-        update(b: CornerBounds, radii: CornerRadii, fill: TopFill | null, width: number, height: number) {
-            if (width <= 0 || height <= 0) return;
-            this.set_uniform_float(this.get_uniform_location('bounds'), 4, [b.x1, b.y1, b.x2, b.y2]);
+        meta: Meta.Window | null = null;
+        private geometry = '';
+
+        update(meta: Meta.Window, radii: CornerRadii, fill: TopFill | null) {
+            this.meta = meta;
             this.set_uniform_float(this.get_uniform_location('radii'), 2, [radii.top, radii.bottom]);
             this.set_uniform_float(this.get_uniform_location('top_fill_left'), 4, fill ? fill.left : [0, 0, 0, 0]);
             this.set_uniform_float(this.get_uniform_location('top_fill_right'), 4, fill ? fill.right : [0, 0, 0, 0]);
             this.set_uniform_float(this.get_uniform_location('top_fill_size'), 1, [fill ? fill.size : 0]);
-            this.set_uniform_float(this.get_uniform_location('pixel_step'), 2, [1 / width, 1 / height]);
+            this.geometry = '';
             this.queue_repaint();
+        }
+
+        // Clients can move their frame inside the buffer (shadow size changes) without any
+        // signal yatm listens to, so the frame bounds are read on every paint.
+        vfunc_paint_target(node: any, paint_context: any) {
+            this.sync_geometry();
+            super.vfunc_paint_target(node, paint_context);
+        }
+
+        private sync_geometry() {
+            const actor = this.get_actor();
+            if (!actor || !this.meta) return;
+
+            const width = actor.get_width();
+            const height = actor.get_height();
+            if (width <= 0 || height <= 0) return;
+
+            const b = corner_bounds(this.meta.get_frame_rect(), this.meta.get_buffer_rect());
+            const geometry = `${b.x1},${b.y1},${b.x2},${b.y2},${width},${height}`;
+            if (geometry === this.geometry) return;
+
+            this.geometry = geometry;
+            this.set_uniform_float(this.get_uniform_location('bounds'), 4, [b.x1, b.y1, b.x2, b.y2]);
+            this.set_uniform_float(this.get_uniform_location('pixel_step'), 2, [1 / width, 1 / height]);
         }
     },
 );
@@ -100,6 +126,5 @@ export function set_rounded_corners(meta: Meta.Window, radii: CornerRadii, fill:
         actor.add_effect_with_name(EFFECT_NAME, effect);
     }
 
-    const bounds = corner_bounds(meta.get_frame_rect(), meta.get_buffer_rect());
-    effect.update(bounds, radii, fill, actor.get_width(), actor.get_height());
+    effect.update(meta, radii, fill);
 }
