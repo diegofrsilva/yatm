@@ -98,7 +98,7 @@ export class AutoTiler {
     update_toplevel(ext: Ext, fork: Fork, monitor: number, smart_gaps: boolean) {
         let rect = ext.monitor_work_area(monitor);
 
-        fork.smart_gapped = smart_gaps && fork.right === null;
+        this.set_smart_gapped(ext, fork, smart_gaps && fork.right === null);
 
         if (!fork.smart_gapped) {
             rect.x += ext.gap_outer;
@@ -107,16 +107,36 @@ export class AutoTiler {
             rect.height -= ext.gap_outer * 2;
         }
 
-        if (fork.left.inner.kind === 2) {
-            const win = ext.windows.get(fork.left.inner.entity);
-            if (win) {
-                win.smart_gapped = fork.smart_gapped;
-            }
-        }
-
         fork.area = fork.set_area(rect.clone());
         fork.length_left = Math.round(fork.prev_ratio * fork.length());
         this.tile(ext, fork, fork.area);
+    }
+
+    /** A lone, gapless toplevel is getting company: give it back its outer gap, and clear
+     * the smart gap flag of the windows in it so their border is drawn again. */
+    unset_smart_gap(ext: Ext, fork: Fork) {
+        let rect = ext.monitor_work_area(fork.monitor);
+
+        rect.x += ext.gap_outer;
+        rect.y += ext.gap_outer;
+        rect.width -= ext.gap_outer * 2;
+        rect.height -= ext.gap_outer * 2;
+
+        fork.set_area(rect);
+        this.set_smart_gapped(ext, fork, false);
+    }
+
+    /** Keeps the windows' smart gap flag (used to hide their border) in sync with their toplevel. */
+    set_smart_gapped(ext: Ext, fork: Fork, smart_gapped: boolean) {
+        fork.smart_gapped = smart_gapped;
+
+        for (const branch of this.forest.iter(fork.entity)) {
+            const inner = branch.inner;
+            const entities = inner.kind === 2 ? [inner.entity] : inner.kind === 3 ? inner.entities : [];
+            for (const entity of entities) {
+                ext.windows.with(entity, (win) => (win.smart_gapped = smart_gapped));
+            }
+        }
     }
 
     /** Attaches `win` to an optionally-given monitor */
@@ -153,15 +173,7 @@ export class AutoTiler {
             const monitor = ext.monitors.get(attachee.entity);
             if (monitor) {
                 if (fork.is_toplevel && fork.smart_gapped && fork.right) {
-                    fork.smart_gapped = false;
-                    let rect = ext.monitor_work_area(fork.monitor);
-
-                    rect.x += ext.gap_outer;
-                    rect.y += ext.gap_outer;
-                    rect.width -= ext.gap_outer * 2;
-                    rect.height -= ext.gap_outer * 2;
-
-                    fork.set_area(rect);
+                    this.unset_smart_gap(ext, fork);
                 }
 
                 this.tile(ext, fork, fork.area.clone());
@@ -247,7 +259,7 @@ export class AutoTiler {
                 if (fork.is_toplevel && ext.settings.smart_gaps() && fork.right === null) {
                     let rect = ext.monitor_work_area(fork.monitor);
                     fork.set_area(rect);
-                    fork.smart_gapped = true;
+                    this.set_smart_gapped(ext, fork, true);
                 }
 
                 this.tile(ext, fork, fork.area);

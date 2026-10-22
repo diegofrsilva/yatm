@@ -250,15 +250,7 @@ export class Tiler {
         let new_fork: null | Fork = null;
 
         if (fork.is_toplevel && fork.smart_gapped) {
-            fork.smart_gapped = false;
-            let rect = ext.monitor_work_area(fork.monitor);
-
-            rect.x += ext.gap_outer;
-            rect.y += ext.gap_outer;
-            rect.width -= ext.gap_outer * 2;
-            rect.height -= ext.gap_outer * 2;
-
-            fork.set_area(rect);
+            ext.auto_tiler?.unset_smart_gap(ext, fork);
         }
 
         let orientation: Lib.Orientation, reverse: boolean;
@@ -338,15 +330,7 @@ export class Tiler {
         let new_fork: null | Fork = null;
 
         if (fork.is_toplevel && fork.smart_gapped) {
-            fork.smart_gapped = false;
-            let rect = ext.monitor_work_area(fork.monitor);
-
-            rect.x += ext.gap_outer;
-            rect.y += ext.gap_outer;
-            rect.width -= ext.gap_outer * 2;
-            rect.height -= ext.gap_outer * 2;
-
-            fork.set_area(rect);
+            ext.auto_tiler?.unset_smart_gap(ext, fork);
         }
 
         const forest = ext.auto_tiler.forest;
